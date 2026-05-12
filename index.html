@@ -554,6 +554,82 @@ button{cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
 </div>
 
 <div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ════════════════════════════════
+// SUPABASE CONFIG
+// ════════════════════════════════
+const SUPA_URL = 'https://lgfiugfmsrqdpvmmnodt.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnZml1Z2Ztc3JxZHB2bW1ub2R0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MjU2MTcsImV4cCI6MjA5NDIwMTYxN30.B1lNIUbTc1md-XhOt96-NPEdPpMj45roA_kY9RW7nf0';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ════════════════════════════════
+// DB HELPERS
+// ════════════════════════════════
+async function dbLoadOrders(){
+  try{
+    const {data,error} = await supa.from('orders').select('*').order('placed_at',{ascending:false});
+    if(error) throw error;
+    if(data && data.length > 0){
+      ORDERS = data.map(r=>({
+        id:r.id, clientId:r.client_id, clientName:r.client_name,
+        clientAddress:r.client_address, deliveryDate:r.delivery_date,
+        deliveryType:r.delivery_type, deliveryWindow:r.delivery_window||'',
+        items:r.items||[], subtotal:parseFloat(r.subtotal)||0,
+        deliveryFee:parseFloat(r.delivery_fee)||0, total:parseFloat(r.total)||0,
+        status:r.status||'pending', type:r.type||'one-time',
+        recurringDays:r.recurring_days||[], placedAt:r.placed_at,
+        notes:r.notes||''
+      }));
+    }
+  }catch(e){ console.warn('DB load orders failed:',e); }
+}
+
+async function dbSaveOrder(order){
+  try{
+    const {error} = await supa.from('orders').upsert({
+      id:order.id, client_id:order.clientId, client_name:order.clientName,
+      client_address:order.clientAddress, delivery_date:order.deliveryDate,
+      delivery_type:order.deliveryType, delivery_window:order.deliveryWindow||'',
+      items:order.items, subtotal:order.subtotal, delivery_fee:order.deliveryFee,
+      total:order.total, status:order.status, type:order.type,
+      recurring_days:order.recurringDays||[], placed_at:order.placedAt,
+      notes:order.notes||''
+    });
+    if(error) throw error;
+  }catch(e){ console.warn('DB save order failed:',e); }
+}
+
+async function dbUpdateOrderStatus(id, status){
+  try{
+    const {error} = await supa.from('orders').update({status}).eq('id',id);
+    if(error) throw error;
+  }catch(e){ console.warn('DB update status failed:',e); }
+}
+
+async function dbLoadMessages(){
+  try{
+    const {data,error} = await supa.from('messages').select('*').order('ts',{ascending:true});
+    if(error) throw error;
+    if(data && data.length > 0){
+      MESSAGES = data.map(r=>({
+        from:r.from_id, fromName:r.from_name,
+        text:r.text, ts:r.ts, role:r.role
+      }));
+    }
+  }catch(e){ console.warn('DB load messages failed:',e); }
+}
+
+async function dbSaveMessage(msg){
+  try{
+    const {error} = await supa.from('messages').insert({
+      from_id:msg.from, from_name:msg.fromName,
+      text:msg.text, ts:msg.ts, role:msg.role
+    });
+    if(error) throw error;
+  }catch(e){ console.warn('DB save message failed:',e); }
+}
+</script>
 <script>
 // ════════════════════════════════
 // DATA
@@ -650,7 +726,8 @@ function doLogin(){
   if(stayIn) try{localStorage.setItem("carousel_session",JSON.stringify({id:user.id,ts:Date.now()}));}catch(e){}
   launchUser(user);
 }
-function launchUser(user){
+async function launchUser(user){
+  await Promise.all([dbLoadOrders(), dbLoadMessages()]);
   ({admin:showAdmin,kitchen:showKitchen,driver:showDriver,sales:showSales,client:showClient})[user.role]?.();
 }
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.getElementById("view-login").classList.contains("active"))doLogin();});
@@ -792,6 +869,7 @@ function submitOrder(){
     status:"pending",type:orderType,recurringDays:orderType==="standing"?[...recurringDays]:[],
     placedAt:new Date().toISOString(),notes:document.getElementById("order-notes").value};
   ORDERS.push(order);
+  dbSaveOrder(order);
   const dLabel=new Date(selDelivDate+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
   const typeLabel=orderType==="standing"?`Recurring (${recurringDays.map(d=>DAY_NAMES[d]).join(", ")})`:"One-time";
   document.getElementById("modal-details").innerHTML=`<div class="divider"></div>${[["Order #",id],["Delivery",dLabel],["Type",typeLabel],["Total","$"+order.total.toFixed(2)]].map(([k,v])=>`<div class="modal-detail-row"><span style="color:var(--brown-lt)">${k}</span><span style="font-weight:700;color:var(--brown)">${v}</span></div>`).join("")}`;
@@ -954,7 +1032,7 @@ function renderDriverRoute(){
 }
 function markDeliveredDriver(id,btn){
   const o=ORDERS.find(x=>x.id===id);
-  if(o){o.status="delivered";btn.classList.add("done");btn.textContent="✓ Done";const n=document.getElementById("stopnum-"+id);if(n) n.classList.add("done");showToast("✓ Delivered: "+o.clientName);}
+  if(o){o.status="delivered";dbUpdateOrderStatus(id,'delivered');btn.classList.add("done");btn.textContent="✓ Done";const n=document.getElementById("stopnum-"+id);if(n) n.classList.add("done");showToast("✓ Delivered: "+o.clientName);}
 }
 
 // ════════ SALES ════════
@@ -1047,7 +1125,8 @@ function submitSalesOrder(){
   if(!lines.length){showToast("Add at least one item.");return;}
   const subtotal=lines.reduce((s,l)=>s+l.price*l.qty,0),fee=client.deliveryType==="delivery"?6:0;
   const id="PO-2026-S"+String(Date.now()).slice(-3);
-  ORDERS.push({id,clientId,clientName:client.company,clientAddress:client.address||"",deliveryDate:delivDate,deliveryType:client.deliveryType,deliveryWindow:client.deliveryWindow||"",items:lines,subtotal,deliveryFee:fee,total:subtotal+fee,status:"confirmed",type,recurringDays:[],placedAt:new Date().toISOString(),notes:document.getElementById("sales-order-notes").value});
+  const salesOrder={id,clientId,clientName:client.company,clientAddress:client.address||"",deliveryDate:delivDate,deliveryType:client.deliveryType,deliveryWindow:client.deliveryWindow||"",items:lines,subtotal,deliveryFee:fee,total:subtotal+fee,status:"confirmed",type,recurringDays:[],placedAt:new Date().toISOString(),notes:document.getElementById("sales-order-notes").value};
+  ORDERS.push(salesOrder);dbSaveOrder(salesOrder);
   Object.keys(salesCart).forEach(k=>delete salesCart[k]);
   document.querySelectorAll("[id^='sqty-']").forEach(el=>el.textContent="0");
   showToast("Order created for "+client.company+" ✓");
@@ -1156,9 +1235,9 @@ function renderOrdersPanel(){
       </tbody>
     </table></div>`;
 }
-function confirmOrder(id){const o=ORDERS.find(x=>x.id===id);if(o){o.status="confirmed";renderOrdersPanel();renderDashboard();showToast("Order "+id+" confirmed ✓");}}
-function markDelivered(id){const o=ORDERS.find(x=>x.id===id);if(o){o.status="delivered";renderOrdersPanel();showToast("Marked as delivered");}}
-function createInvoice(id){const o=ORDERS.find(x=>x.id===id);if(o){o.status="invoiced";renderOrdersPanel();showToast("↗ Invoice created in QuickBooks for "+o.clientName);}}
+function confirmOrder(id){const o=ORDERS.find(x=>x.id===id);if(o){o.status="confirmed";dbUpdateOrderStatus(id,'confirmed');renderOrdersPanel();renderDashboard();showToast("Order "+id+" confirmed ✓");}}
+function markDelivered(id){const o=ORDERS.find(x=>x.id===id);if(o){o.status="delivered";dbUpdateOrderStatus(id,'delivered');renderOrdersPanel();showToast("Marked as delivered");}}
+function createInvoice(id){const o=ORDERS.find(x=>x.id===id);if(o){o.status="invoiced";dbUpdateOrderStatus(id,'invoiced');renderOrdersPanel();showToast("↗ Invoice created in QuickBooks for "+o.clientName);}}
 function renderUpcomingPanel(){
   const now=new Date();
   const upcoming=ORDERS.filter(o=>new Date(o.deliveryDate+"T12:00:00")>=now).sort((a,b)=>new Date(a.deliveryDate)-new Date(b.deliveryDate));
@@ -1360,7 +1439,8 @@ function renderAdminMessages(){
 function sendAdminMsg(){
   const input=document.getElementById("admin-chat-input"),text=input.value.trim();
   if(!text) return;
-  MESSAGES.push({from:"admin",fromName:"Le Carousel Patisserie",text,ts:new Date().toISOString(),role:"admin"});
+  const amsg={from:"admin",fromName:"Le Carousel Patisserie",text,ts:new Date().toISOString(),role:"admin"};
+  MESSAGES.push(amsg);dbSaveMessage(amsg);
   input.value="";renderAdminMessages();showToast("Message sent ✓");
 }
 
