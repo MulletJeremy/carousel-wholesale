@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Carousel">
+<meta name="theme-color" content="#1A1612">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<title>Le Carousel Patisserie — Wholesale</title>
+<style>
+:root{
+  --cream:#FAF7F2;--warm:#FDF9F4;--dark:#1A1612;--brown:#3D2B1F;
+  --brown-mid:#6B4C3B;--brown-lt:#A07860;--gold:#C2912E;--gold-lt:#E8C97A;
+  --gold-pale:#F5EDDA;--sage:#5A8A5E;--sage-pale:#EDF3EE;
+  --red:#C85A3A;--red-pale:#FAEAE4;--blue:#185FA5;--blue-pale:#E6F1FB;
+  --purple:#534AB7;--purple-pale:#EEEDFE;--ez:#FF6900;--ez-pale:#FFF0E6;
+  --border:rgba(61,43,31,0.12);--border-strong:rgba(61,43,31,0.22);
+  --radius:10px;--radius-lg:18px;--nav-h:58px;--bottom-h:64px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--dark);font-size:14px;line-height:1.6;min-height:100vh;overscroll-behavior:none}
+.view{display:none;min-height:100vh;flex-direction:column}.view.active{display:flex}
+button{cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-gold{background:var(--gold-pale);color:#7A5A10}.badge-sage{background:var(--sage-pale);color:var(--sage)}
+.badge-red{background:var(--red-pale);color:var(--red)}.badge-brown{background:#F0E8E0;color:var(--brown-mid)}
+.badge-blue{background:var(--blue-pale);color:var(--blue)}.badge-purple{background:var(--purple-pale);color:var(--purple)}
+.badge-ez{background:var(--ez-pale);color:var(--ez)}
+.pill-label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--brown-lt)}
+.divider{height:1px;background:var(--border);margin:14px 0}
+.btn{padding:10px 20px;border-radius:9px;font-size:14px;font-weight:500;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.btn-primary{background:var(--brown);color:#fff}.btn-primary:hover{background:var(--dark)}
+.btn-ghost{background:transparent;border:1.5px solid var(--border-strong);color:var(--brown-mid)}.btn-ghost:hover{border-color:var(--brown);color:var(--brown)}
+.btn-gold{background:var(--gold);color:#fff}.btn-green{background:#2CA01C;color:#fff}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
+.status-chip{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600}
+.status-pending{background:#FEF3CD;color:#9A6D00}.status-confirmed{background:var(--sage-pale);color:var(--sage)}
+.status-delivered{background:#EAF3DE;color:#3B6D11}.status-invoiced{background:var(--blue-pale);color:var(--blue)}
+/* LOGIN */
+#view-login{background:var(--dark);align-items:center;justify-content:center;position:relative;overflow:hidden;min-height:100vh}
+#view-login::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 50% at 50% -5%,rgba(194,145,46,.22),transparent 65%)}
+.login-wrap{background:var(--warm);border-radius:var(--radius-lg);padding:40px 36px 32px;width:360px;max-width:calc(100vw - 32px);position:relative;z-index:1;box-shadow:0 24px 60px rgba(0,0,0,.38)}
+.login-logo{text-align:center;margin-bottom:10px}
+.login-logo-text{font-size:28px;font-weight:800;color:var(--brown);letter-spacing:-.01em}
+.login-subtitle{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--brown-lt);text-align:center;margin-bottom:20px}
+.form-field{margin-bottom:12px}
+.form-label{display:block;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--brown-mid);margin-bottom:4px}
+.form-input{width:100%;padding:11px 13px;border:1.5px solid var(--border-strong);border-radius:8px;font-size:14px;color:var(--dark);background:#fff;outline:none;transition:border-color .2s;font-family:inherit}
+.form-input:focus{border-color:var(--gold)}
+.login-error{background:var(--red-pale);color:var(--red);padding:8px 12px;border-radius:7px;font-size:12px;margin-bottom:12px;display:none}
+/* TOPNAV */
+.topnav{background:var(--warm);border-bottom:1px solid var(--border);padding:0 16px 0 18px;display:flex;align-items:center;justify-content:space-between;height:var(--nav-h);flex-shrink:0;position:sticky;top:0;z-index:50}
+.topnav-brand{font-size:17px;font-weight:800;color:var(--brown)}
+.topnav-right{display:flex;align-items:center;gap:8px}
+.topnav-user{font-size:12px;color:var(--brown-mid)}
+.topnav-logout{background:none;border:none;font-size:12px;color:var(--brown-lt);cursor:pointer;padding:5px 9px;border-radius:6px}
+.topnav-logout:hover{color:var(--brown);background:var(--gold-pale)}
+/* BOTTOM NAV */
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:var(--bottom-h);background:var(--warm);border-top:1px solid var(--border);z-index:50;padding-bottom:env(safe-area-inset-bottom)}
+@media(max-width:768px){.bottom-nav{display:flex}}
+.bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:var(--brown-lt);cursor:pointer;border:none;background:none;padding:8px 4px;transition:color .15s;font-weight:500}
+.bnav-item.active{color:var(--brown)}.bnav-icon{font-size:19px;line-height:1}
+.mob-pad{height:var(--bottom-h)}@media(min-width:769px){.mob-pad{display:none}}
+/* ADMIN */
+#view-admin{background:var(--cream)}
+.admin-shell{display:flex;flex:1;overflow:hidden}
+.admin-sidebar{width:200px;background:var(--dark);flex-shrink:0;overflow-y:auto;padding:8px 0}
+@media(max-width:768px){.admin-sidebar{display:none}}
+.anav-section{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.25);padding:12px 18px 4px;margin-top:8px}
+.anav-item{padding:9px 18px;font-size:13px;color:rgba(255,255,255,.5);cursor:pointer;border-left:3px solid transparent;transition:all .15s}
+.anav-item:hover{color:rgba(255,255,255,.85);background:rgba(255,255,255,.06)}
+.anav-item.active{color:#fff;border-left-color:var(--gold);background:rgba(194,145,46,.12)}
+.admin-content{flex:1;overflow-y:auto;max-height:calc(100vh - var(--nav-h));padding:22px 24px;position:relative}
+@media(max-width:768px){.admin-content{padding:14px;max-height:calc(100vh - var(--nav-h) - var(--bottom-h))}}
+.admin-panel{display:none}.admin-panel.active{display:block}
+/* CLIENT */
+#view-client{background:var(--cream)}
+.client-shell{display:grid;grid-template-columns:1fr 300px;flex:1;overflow:hidden}
+@media(max-width:768px){.client-shell{grid-template-columns:1fr}}
+.client-main{overflow-y:auto;max-height:calc(100vh - var(--nav-h));padding:20px}
+@media(max-width:768px){.client-main{max-height:calc(100vh - var(--nav-h) - var(--bottom-h));padding:14px}}
+.client-sidebar{background:var(--warm);border-left:1px solid var(--border);padding:18px;overflow-y:auto;max-height:calc(100vh - var(--nav-h))}
+@media(max-width:768px){.client-sidebar{display:none}}
+/* CARDS */
+.card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.card-header{background:#F5F0E8;padding:11px 15px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.card-title{font-size:13px;font-weight:600;color:var(--brown)}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+@media(max-width:768px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+.stat-card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:14px}
+.stat-val{font-size:24px;font-weight:700;color:var(--dark)}.stat-label{font-size:10px;color:var(--brown-lt);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;font-weight:600}
+.stat-sub{font-size:11px;color:var(--sage);margin-top:3px;font-weight:500}
+.data-table{width:100%;border-collapse:collapse}
+.data-table th{background:#F5F0E8;padding:9px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--brown-lt);white-space:nowrap}
+.data-table td{padding:10px 12px;font-size:13px;border-top:1px solid var(--border);vertical-align:middle}
+.data-table tr:hover td{background:#FDFAF6}
+.alert-card{background:#fff;border-radius:var(--radius);border:1.5px solid var(--border);padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px}
+.alert-card.urgent{border-color:var(--red);background:var(--red-pale)}.alert-card.info{border-color:var(--gold-lt);background:var(--gold-pale)}
+.ftabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.ftab{padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;border:1.5px solid var(--border);color:var(--brown-mid);background:#fff;transition:all .15s;font-weight:500}
+.ftab.active{background:var(--brown);color:#fff;border-color:var(--brown)}
+.week-nav{display:flex;align-items:center;gap:8px}
+.week-btn{width:28px;height:28px;border-radius:6px;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--brown-mid)}
+.week-btn:hover{border-color:var(--gold);color:var(--gold)}
+.week-label{font-size:14px;font-weight:600;color:var(--brown)}
+.sec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.sec-title{font-size:20px;font-weight:700;color:var(--brown)}
+/* CATALOG */
+.cat-title{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--brown-lt);padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:10px}
+.prod-row{display:flex;align-items:center;padding:9px 0;border-bottom:1px solid rgba(61,43,31,.05);gap:10px}
+.prod-row:last-child{border-bottom:none}
+.qty-ctrl{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.qty-btn{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border-strong);background:#fff;font-size:17px;color:var(--brown-mid);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;line-height:1}
+.qty-btn:hover{border-color:var(--gold);color:var(--gold)}
+.qty-val{width:26px;text-align:center;font-size:13px;font-weight:700}
+.delivery-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:16px}
+@media(max-width:480px){.delivery-grid{grid-template-columns:repeat(2,1fr)}}
+.del-card{border:1.5px solid var(--border);border-radius:var(--radius);padding:11px;cursor:pointer;transition:all .18s;background:#fff}
+.del-card:hover{border-color:var(--gold-lt);background:var(--gold-pale)}
+.del-card.selected{border-color:var(--gold);background:var(--gold-pale)}
+.del-card.disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+.del-day{font-weight:700;font-size:12px;color:var(--brown)}.del-date{font-size:11px;color:var(--brown-lt)}
+.del-cutoff{font-size:10px;color:var(--sage);margin-top:3px;font-weight:600}
+.del-window{font-size:10px;color:var(--blue);margin-top:2px;font-weight:500}
+/* ORDER TYPE */
+.order-type-selector{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.otype-card{border:1.5px solid var(--border);border-radius:var(--radius);padding:12px;cursor:pointer;background:#fff;transition:all .15s;text-align:left}
+.otype-card:hover{border-color:var(--gold-lt)}.otype-card.selected{border-color:var(--gold);background:var(--gold-pale)}
+.otype-title{font-weight:700;font-size:12px;color:var(--brown)}.otype-desc{font-size:11px;color:var(--brown-lt);margin-top:2px}
+.recurring-days{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.rday-btn{padding:4px 9px;border-radius:6px;border:1.5px solid var(--border);background:#fff;font-size:11px;font-weight:600;color:var(--brown-mid);cursor:pointer;transition:all .15s}
+.rday-btn.active{border-color:var(--gold);background:var(--gold-pale);color:var(--brown)}
+/* SIDEBAR */
+.order-line{display:flex;justify-content:space-between;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);gap:8px}
+.order-line:last-of-type{border-bottom:none}
+.order-empty{font-size:13px;color:var(--brown-lt);text-align:center;padding:20px 0;font-style:italic}
+.moq-box{padding:8px 10px;border-radius:6px;font-size:11px;margin-top:8px;display:none;font-weight:500}
+.moq-warn{background:var(--red-pale);color:var(--red)}.moq-ok{background:var(--sage-pale);color:var(--sage)}
+.dtype-btn{flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-size:12px;font-weight:600;color:var(--brown-mid);cursor:pointer;transition:all .15s}
+.dtype-btn.active{border-color:var(--gold);background:var(--gold-pale);color:var(--brown)}
+.notes-area{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;resize:vertical;min-height:56px;outline:none;background:#fff;margin-top:8px;font-family:'DM Sans',sans-serif}
+.notes-area:focus{border-color:var(--gold)}
+/* KITCHEN */
+#view-kitchen{background:#1A1612}
+.kitchen-content{flex:1;overflow-y:auto;padding:14px;max-height:calc(100vh - var(--nav-h))}
+@media(max-width:768px){.kitchen-content{max-height:calc(100vh - var(--nav-h) - var(--bottom-h))}}
+.kitchen-card{background:#2A2420;border-radius:12px;border:1px solid rgba(255,255,255,.08);padding:16px;margin-bottom:12px}
+.k-summary{background:#2A2420;border-radius:12px;border:1px solid rgba(194,145,46,.3);padding:16px;margin-bottom:14px}
+.k-sum-title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(194,145,46,.8);margin-bottom:10px;font-weight:700}
+.k-sum-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px;color:rgba(255,255,255,.8)}
+.k-sum-qty{font-weight:700;color:#E8C97A}
+.k-print-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer;font-weight:500}
+/* DRIVER */
+#view-driver{background:var(--cream)}
+.driver-content{flex:1;overflow-y:auto;padding:14px;max-height:calc(100vh - var(--nav-h) - var(--bottom-h))}
+.driver-day-tabs{display:flex;gap:7px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px;scrollbar-width:none}
+.driver-day-tabs::-webkit-scrollbar{display:none}
+.driver-stop{background:#fff;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:10px;overflow:hidden}
+.stop-header{padding:13px 14px;display:flex;align-items:flex-start;gap:12px}
+.stop-num{width:30px;height:30px;background:var(--brown);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;margin-top:1px}
+.stop-num.done{background:var(--sage)}
+.driver-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.dstat{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:11px;text-align:center}
+.dstat-val{font-size:20px;font-weight:800;color:var(--dark)}.dstat-label{font-size:10px;color:var(--brown-lt);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;font-weight:600}
+.route-btn{width:100%;padding:14px;background:var(--brown);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+.route-btn:hover{background:var(--dark)}
+.btn-maps{background:var(--blue-pale);color:var(--blue);border:none;border-radius:7px;padding:7px 11px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn-delivered{background:var(--sage-pale);color:var(--sage);border:none;border-radius:7px;padding:7px 11px;font-size:11px;font-weight:600;cursor:pointer}
+.btn-delivered.done{background:#EAF3DE;color:#3B6D11}
+.share-box{background:var(--gold-pale);border:1px solid var(--gold-lt);border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--brown-mid)}
+/* SALES */
+#view-sales{background:var(--cream)}
+.sales-content{flex:1;overflow-y:auto;padding:18px;max-height:calc(100vh - var(--nav-h) - var(--bottom-h))}
+/* PRODUCTION */
+.prod-week-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:18px}
+@media(max-width:768px){.prod-week-grid{grid-template-columns:repeat(3,1fr)}}
+.prod-day-card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:12px}
+.prod-day-name{font-weight:700;font-size:11px;color:var(--brown)}.prod-day-date{font-size:10px;color:var(--brown-lt);margin-bottom:8px}
+.prod-day-total{font-size:22px;font-weight:800;color:var(--dark)}.prod-day-label{font-size:10px;color:var(--brown-lt)}
+.prod-table{width:100%;border-collapse:collapse}
+.prod-table th{padding:8px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--brown-lt);white-space:nowrap}
+.prod-table td{padding:8px 12px;font-size:13px;border-top:1px solid var(--border)}
+.prod-table .dc{text-align:center;font-weight:600}.prod-table .dc.hi{background:var(--gold-pale);color:#7A5A10;border-radius:4px}
+.prod-table tr:hover td{background:#FDFAF6}.prod-total-cell{font-weight:700;color:var(--brown);background:#F9F5EE!important}
+/* PO PRINT */
+#po-print-area{display:none;position:absolute;inset:0;background:#fff;z-index:300;padding:40px 48px;overflow-y:auto}
+#po-print-area.open{display:block}
+.po-print-actions{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
+@media print{.po-print-actions{display:none!important}body *{visibility:hidden!important}#po-print-area,#po-print-area *{visibility:visible!important}#po-print-area{position:fixed!important;inset:0!important;padding:32px!important}}
+.po-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:18px;border-bottom:2px solid #3D2B1F}
+.po-brand h1{font-size:22px;font-weight:800;color:#3D2B1F}.po-brand p{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A07860;margin-top:2px}
+.po-meta-r{text-align:right}.po-num{font-size:20px;font-weight:800;color:#3D2B1F}
+.po-lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#A07860;margin-bottom:3px;font-weight:700}
+.po-addrs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px}
+.po-addr h3{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#A07860;margin-bottom:6px;font-weight:700}
+.po-addr p{font-size:13px;color:#1A1612;line-height:1.7}
+.po-info{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #E0D8D0;border-radius:8px;overflow:hidden;margin-bottom:18px}
+.po-info-c{padding:10px 14px;border-right:1px solid #E0D8D0}.po-info-c:last-child{border-right:none}
+.po-info-c .lbl{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#A07860;margin-bottom:3px;font-weight:700}
+.po-info-c .val{font-size:13px;font-weight:600;color:#1A1612}
+.po-tbl{width:100%;border-collapse:collapse;margin-bottom:18px}
+.po-tbl thead tr{background:#3D2B1F}.po-tbl thead th{padding:10px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#fff}
+.po-tbl thead th:last-child,.po-tbl thead th:nth-child(n+3){text-align:right}
+.po-tbl tbody tr{border-bottom:1px solid #EDE8E2}.po-tbl tbody tr:nth-child(even){background:#FDFAF6}
+.po-tbl tbody td{padding:10px 12px;font-size:13px;color:#1A1612}.po-tbl tbody td:nth-child(n+3){text-align:right}
+.po-tbl .cat-r td{background:#F5F0E8;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6B4C3B;padding:5px 12px}
+.po-totals{display:flex;justify-content:flex-end;margin-bottom:20px}
+.po-totals-box{width:240px}
+.po-tr{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #EDE8E2;font-size:13px}
+.po-tr.grand{border-top:2px solid #3D2B1F;border-bottom:none;padding-top:10px;margin-top:4px}
+.po-tr.grand .lbl{font-weight:700;font-size:14px;color:#1A1612}.po-tr.grand .val{font-size:18px;font-weight:800;color:#3D2B1F}
+.po-tr .lbl{color:#6B4C3B}.po-tr .val{font-weight:600;color:#1A1612}
+.po-ftr{border-top:1px solid #EDE8E2;padding-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.po-ftr h4{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#A07860;margin-bottom:6px;font-weight:700}
+.po-ftr p{font-size:12px;color:#6B4C3B;line-height:1.7}
+/* EZCATER */
+.ez-order{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:14px;margin-bottom:10px}
+/* CHAT */
+.chat-container{display:flex;flex-direction:column;height:360px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:#fff}
+.chat-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.chat-msg{max-width:80%;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5}
+.chat-msg.client{background:var(--gold-pale);color:var(--brown);align-self:flex-end;border-bottom-right-radius:3px}
+.chat-msg.admin{background:#F0EDE8;color:var(--dark);align-self:flex-start;border-bottom-left-radius:3px}
+.chat-msg-meta{font-size:10px;color:var(--brown-lt);margin-top:3px}
+.chat-input-area{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px}
+.chat-input{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;outline:none;font-family:'DM Sans',sans-serif}
+.chat-input:focus{border-color:var(--gold)}
+/* MODAL */
+.modal-wrap{position:fixed;inset:0;background:rgba(26,22,18,.55);display:none;align-items:center;justify-content:center;z-index:200;padding:16px}
+.modal-wrap.open{display:flex}
+.modal-card{background:var(--warm);border-radius:var(--radius-lg);padding:30px 28px;width:440px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto}
+.modal-title{font-size:22px;font-weight:800;text-align:center;color:var(--brown);margin-bottom:5px}
+.modal-sub{font-size:13px;color:var(--brown-lt);text-align:center;margin-bottom:16px}
+.modal-detail-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px}
+
+
+/* ── TYPOGRAPHY: Cormorant Garamond for display elements ── */
+.sec-title,.modal-title,.login-logo-text,.topnav-brand,
+.stat-val,.prod-day-total,.week-label,.k-qty,
+.po-num,.po-brand h1{font-family:'Cormorant Garamond',serif}
+.login-logo-text{font-size:30px;font-weight:600;letter-spacing:0.01em}
+.topnav-brand{font-size:18px;letter-spacing:0.02em;font-weight:600}
+.sec-title{font-weight:600}
+.stat-val{font-weight:600}
+
+/* CUTOFF ALERT BANNER */
+.cutoff-banner{background:#1A1612;color:#fff;padding:10px 16px;font-size:12px;display:flex;align-items:center;gap:10px;flex-shrink:0;border-bottom:2px solid var(--gold)}
+.cutoff-banner strong{color:var(--gold-lt);font-weight:700}
+.cutoff-banner-text{flex:1;line-height:1.5}
+.cutoff-banner-close{background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:16px;padding:0 4px;flex-shrink:0}
+.cutoff-banner-close:hover{color:#fff}
+/* STAY SIGNED IN */
+.stay-signed-in{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--brown-mid)}
+.stay-signed-in input{accent-color:var(--gold);width:14px;height:14px}
+
+/* TOAST */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--dark);color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;z-index:999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;font-weight:500}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(min-width:769px){.toast{bottom:24px;left:auto;right:24px;transform:translateY(20px)}.toast.show{transform:translateY(0)}}
+</style>
+</head>
+<body>
+<!-- LOGIN -->
+<div id="view-login" class="view active">
+  <div class="login-wrap">
+    <div class="login-logo"><div class="login-logo-text">Le Carousel Patisserie</div></div>
+    <div class="login-subtitle">Patisserie · Wholesale Portal</div>
+    <div id="login-error" class="login-error">Incorrect email or password.</div>
+    <div class="form-field"><label class="form-label">Email</label><input class="form-input" id="login-email" type="email" placeholder="your@email.com"></div>
+    <div class="form-field"><label class="form-label">Password</label><input class="form-input" id="login-password" type="password" placeholder="••••••••"></div>
+    <label class="stay-signed-in"><input type="checkbox" id="stay-signed-in" checked> Stay signed in</label>
+    <button class="btn btn-primary" style="width:100%;margin-top:10px;justify-content:center" onclick="doLogin()">Sign In</button>
+    <p style="font-size:11px;color:var(--brown-lt);text-align:center;margin-top:12px">Net 15 · $45 MOQ · $6 delivery · <a href="mailto:wholesale@carousel-patisserie.com" style="color:var(--gold)">Contact us</a></p>
+  </div>
+</div>
+
+<!-- CLIENT PORTAL -->
+<div id="view-client" class="view">
+  <nav class="topnav">
+    <span class="topnav-brand">Le Carousel Patisserie</span>
+    <div class="topnav-right">
+      <span class="topnav-user" id="client-greeting"></span>
+      <button class="topnav-logout" onclick="doLogout()">Sign out</button>
+    </div>
+  </nav>
+  <div class="cutoff-banner" id="cutoff-banner" style="display:none">
+    <span style="font-size:18px">⚠️</span>
+    <div class="cutoff-banner-text" id="cutoff-banner-text"></div>
+    <button class="cutoff-banner-close" onclick="document.getElementById('cutoff-banner').style.display='none'">×</button>
+  </div>
+  <div class="client-shell">
+    <div class="client-main">
+      <div class="ftabs">
+        <button class="ftab active" onclick="clientTab('order',this)">New Order</button>
+        <button class="ftab" onclick="clientTab('standing',this)">Standing</button>
+        <button class="ftab" onclick="clientTab('history',this)">History</button>
+        <button class="ftab" onclick="clientTab('messages',this)">💬 Messages</button>
+      </div>
+      <div id="ctab-order">
+        <h2 class="sec-title" style="margin-bottom:4px">Place an Order</h2>
+        <p style="font-size:13px;color:var(--brown-lt);margin-bottom:16px">Select date · Add items · Choose type</p>
+        <p class="pill-label" style="margin-bottom:8px">Delivery date</p>
+        <div class="delivery-grid" id="delivery-grid"></div>
+        <p class="pill-label" style="margin-bottom:8px">Order type</p>
+        <div class="order-type-selector">
+          <div class="otype-card selected" onclick="selectOrderType('one-time',this)"><div class="otype-title">⚡ One-time</div><div class="otype-desc">Single delivery</div></div>
+          <div class="otype-card" onclick="selectOrderType('standing',this)"><div class="otype-title">🔄 Recurring</div><div class="otype-desc">Repeats on chosen days</div></div>
+        </div>
+        <div id="recurring-config" style="display:none;margin-bottom:16px">
+          <p class="pill-label" style="margin-bottom:7px">Repeat on</p>
+          <div class="recurring-days" id="recurring-days"></div>
+        </div>
+        <div id="catalog-container"></div>
+      </div>
+      <div id="ctab-standing" style="display:none">
+        <h2 class="sec-title" style="margin-bottom:4px">Standing Order</h2>
+        <p style="font-size:13px;color:var(--brown-lt);margin-bottom:16px">Your recurring order. Changes apply next week.</p>
+        <div id="standing-container"></div>
+        <button class="btn btn-gold" style="margin-top:14px" onclick="showToast('Standing order saved ✓ — changes apply next week.')">Save Changes</button>
+      </div>
+      <div id="ctab-history" style="display:none">
+        <h2 class="sec-title" style="margin-bottom:16px">Order History</h2>
+        <div id="history-container"></div>
+      </div>
+      <div id="ctab-messages" style="display:none">
+        <h2 class="sec-title" style="margin-bottom:16px">Messages</h2>
+        <div class="chat-container">
+          <div class="chat-messages" id="client-chat-messages"></div>
+          <div class="chat-input-area">
+            <input class="chat-input" id="client-chat-input" placeholder="Send a message…" onkeydown="if(event.key==='Enter')sendClientMsg()">
+            <button class="btn btn-primary btn-sm" onclick="sendClientMsg()">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="client-sidebar">
+      <div style="font-size:15px;font-weight:700;color:var(--brown);margin-bottom:4px">Order Summary</div>
+      <div id="sidebar-delivery-info" style="font-size:12px;color:var(--brown-mid);margin-bottom:12px">No date selected</div>
+      <p class="pill-label" style="margin-bottom:7px">Delivery type</p>
+      <div style="display:flex;gap:7px;margin-bottom:14px">
+        <button class="dtype-btn active" id="dtype-delivery" onclick="setDType('delivery')">🚚 Delivery +$6</button>
+        <button class="dtype-btn" id="dtype-pickup" onclick="setDType('pickup')">🏪 Pickup</button>
+      </div>
+      <div class="divider"></div>
+      <div id="order-lines"><div class="order-empty">No items yet</div></div>
+      <div class="divider"></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:12px;color:var(--brown-mid)">Subtotal</span><span id="sb-subtotal" style="font-size:12px;font-weight:700">$0.00</span></div>
+      <div id="sb-fee-row" style="display:flex;justify-content:space-between;padding:5px 0"><span style="font-size:12px;color:var(--brown-mid)">Delivery fee</span><span style="font-size:12px;font-weight:700">$6.00</span></div>
+      <div style="display:flex;justify-content:space-between;padding:9px 0;border-top:1.5px solid var(--border-strong);margin-top:7px">
+        <span style="font-size:13px;font-weight:700;color:var(--brown)">Total</span>
+        <span id="sb-total" style="font-size:16px;font-weight:800;color:var(--dark)">$6.00</span>
+      </div>
+      <div id="moq-warn" class="moq-box moq-warn">Minimum order is <strong>$45</strong></div>
+      <div id="moq-ok" class="moq-box moq-ok">✓ Minimum order met</div>
+      <div id="minqty-warn" class="moq-box moq-warn" style="margin-top:5px"></div>
+      <label class="pill-label" style="display:block;margin-top:12px">Notes / Access code</label>
+      <textarea class="notes-area" id="order-notes" placeholder="Delivery instructions, access code…"></textarea>
+      <button class="btn btn-primary" style="width:100%;margin-top:12px;justify-content:center" onclick="submitOrder()">Place Order</button>
+      <p style="font-size:11px;color:var(--brown-lt);text-align:center;margin-top:6px">Confirmation email will be sent</p>
+    </div>
+  </div>
+  <div class="bottom-nav" id="client-bnav">
+    <button class="bnav-item active" onclick="clientTab('order',null);setBActive(this,'client-bnav')"><span class="bnav-icon">🛒</span>Order</button>
+    <button class="bnav-item" onclick="clientTab('standing',null);setBActive(this,'client-bnav')"><span class="bnav-icon">🔄</span>Standing</button>
+    <button class="bnav-item" onclick="clientTab('history',null);setBActive(this,'client-bnav')"><span class="bnav-icon">📋</span>History</button>
+    <button class="bnav-item" onclick="clientTab('messages',null);setBActive(this,'client-bnav')"><span class="bnav-icon">💬</span>Messages</button>
+    <button class="bnav-item" onclick="showMobileCart()"><span class="bnav-icon">🛍</span><span id="cart-badge">Cart</span></button>
+  </div>
+  <div class="mob-pad"></div>
+  <div class="modal-wrap" id="confirm-modal">
+    <div class="modal-card">
+      <div style="width:44px;height:44px;background:var(--sage-pale);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:20px">✓</div>
+      <h2 class="modal-title">Order Placed!</h2>
+      <p class="modal-sub">Confirmation sent to your email.</p>
+      <div id="modal-details"></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:18px;justify-content:center" onclick="closeModal('confirm-modal')">Done</button>
+    </div>
+  </div>
+  <div class="modal-wrap" id="cart-modal">
+    <div class="modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h2 style="font-size:18px;font-weight:800;color:var(--brown)">Cart</h2>
+        <button onclick="closeModal('cart-modal')" style="background:none;border:none;font-size:22px;color:var(--brown-lt);cursor:pointer">×</button>
+      </div>
+      <div id="cart-modal-lines"></div>
+      <div class="divider"></div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:15px;padding:6px 0"><span>Total</span><span id="cart-modal-total">$0.00</span></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:14px;justify-content:center" onclick="closeModal('cart-modal');submitOrder()">Place Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- KITCHEN -->
+<div id="view-kitchen" class="view">
+  <nav class="topnav" style="background:#2A2420;border-color:rgba(255,255,255,.08)">
+    <span style="font-size:15px;font-weight:700;color:#E8C97A">Le Carousel Patisserie · Kitchen</span>
+    <div class="topnav-right">
+      <span class="badge" style="background:rgba(194,145,46,.2);color:#E8C97A">BOF</span>
+      <button class="topnav-logout" style="color:rgba(255,255,255,.4)" onclick="doLogout()">Exit</button>
+    </div>
+  </nav>
+  <div class="kitchen-content">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <p style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:4px;font-weight:700">Production</p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="week-btn" style="background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.6)" onclick="changeWeek(-1)">‹</button>
+          <span style="font-size:14px;font-weight:700;color:#fff" id="kitchen-week-label"></span>
+          <button class="week-btn" style="background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.6)" onclick="changeWeek(1)">›</button>
+        </div>
+      </div>
+      <button onclick="window.print()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;font-weight:600">🖨 Print all</button>
+    </div>
+    <div id="kitchen-summary"></div>
+    <p style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:10px;font-weight:700">Orders by delivery</p>
+    <div id="kitchen-orders"></div>
+  </div>
+  <div class="bottom-nav" style="background:#2A2420;border-color:rgba(255,255,255,.08)">
+    <button class="bnav-item" style="color:rgba(255,255,255,.4)" onclick="window.print()"><span class="bnav-icon">🖨</span>Print</button>
+    <button class="bnav-item" style="color:rgba(255,255,255,.4)" onclick="doLogout()"><span class="bnav-icon">🚪</span>Exit</button>
+  </div>
+  <div class="mob-pad"></div>
+</div>
+
+<!-- DRIVER -->
+<div id="view-driver" class="view">
+  <nav class="topnav">
+    <span class="topnav-brand">Le Carousel Patisserie · Delivery</span>
+    <div class="topnav-right">
+      <span class="badge badge-blue">Driver</span>
+      <button class="topnav-logout" onclick="doLogout()">Exit</button>
+    </div>
+  </nav>
+  <div class="driver-content">
+    <div class="driver-day-tabs" id="driver-day-tabs"></div>
+    <div id="driver-main"></div>
+  </div>
+  <div class="bottom-nav">
+    <button class="bnav-item active"><span class="bnav-icon">🗺</span>Route</button>
+    <button class="bnav-item" onclick="doLogout()"><span class="bnav-icon">🚪</span>Exit</button>
+  </div>
+  <div class="mob-pad"></div>
+</div>
+
+<!-- SALES -->
+<div id="view-sales" class="view">
+  <nav class="topnav">
+    <span class="topnav-brand">Le Carousel Patisserie · Sales</span>
+    <div class="topnav-right">
+      <span class="badge badge-purple">Sales Rep</span>
+      <button class="topnav-logout" onclick="doLogout()">Exit</button>
+    </div>
+  </nav>
+  <div class="sales-content">
+    <div class="ftabs" id="sales-tabs">
+      <button class="ftab active" onclick="salesTab('overview',this)">Overview</button>
+      <button class="ftab" onclick="salesTab('orders',this)">Orders</button>
+      <button class="ftab" onclick="salesTab('clients',this)">Clients</button>
+      <button class="ftab" onclick="salesTab('neworder',this)">+ Create Order</button>
+    </div>
+    <div id="stab-overview"><div id="sales-overview"></div></div>
+    <div id="stab-orders" style="display:none"><div id="sales-orders"></div></div>
+    <div id="stab-clients" style="display:none"><div id="sales-clients"></div></div>
+    <div id="stab-neworder" style="display:none"><div id="sales-neworder"></div></div>
+  </div>
+  <div class="bottom-nav" id="sales-bnav">
+    <button class="bnav-item active" onclick="salesTab('overview',null);setBActive(this,'sales-bnav')"><span class="bnav-icon">📊</span>Overview</button>
+    <button class="bnav-item" onclick="salesTab('orders',null);setBActive(this,'sales-bnav')"><span class="bnav-icon">📋</span>Orders</button>
+    <button class="bnav-item" onclick="salesTab('clients',null);setBActive(this,'sales-bnav')"><span class="bnav-icon">👥</span>Clients</button>
+    <button class="bnav-item" onclick="salesTab('neworder',null);setBActive(this,'sales-bnav')"><span class="bnav-icon">➕</span>New</button>
+  </div>
+  <div class="mob-pad"></div>
+</div>
+
+<!-- ADMIN -->
+<div id="view-admin" class="view">
+  <nav class="topnav">
+    <span class="topnav-brand">Le Carousel Patisserie — Production</span>
+    <div class="topnav-right">
+      <span class="badge badge-gold">Admin</span>
+      <button class="topnav-logout" onclick="doLogout()">Sign out</button>
+    </div>
+  </nav>
+  <div class="admin-shell">
+    <div class="admin-sidebar">
+      <div class="anav-section">Overview</div>
+      <div class="anav-item active" onclick="adminTab('dashboard',this)">Dashboard</div>
+      <div class="anav-item" onclick="adminTab('production',this)">Production</div>
+      <div class="anav-section">Orders</div>
+      <div class="anav-item" onclick="adminTab('orders',this)">All Orders</div>
+      <div class="anav-item" onclick="adminTab('upcoming',this)">Upcoming</div>
+      <div class="anav-item" onclick="adminTab('ezcater',this)">🟠 EZCater</div>
+      <div class="anav-section">Delivery</div>
+      <div class="anav-item" onclick="adminTab('route',this)">Daily Route</div>
+      <div class="anav-section">Setup</div>
+      <div class="anav-item" onclick="adminTab('clients',this)">Clients</div>
+      <div class="anav-item" onclick="adminTab('team',this)">Team</div>
+      <div class="anav-item" onclick="adminTab('messages',this)">Messages</div>
+    </div>
+    <div class="admin-content">
+      <div id="po-print-area">
+        <div class="po-print-actions">
+          <button class="btn btn-primary btn-sm" onclick="window.print()">🖨 Print</button>
+          <button class="btn btn-sm btn-green" onclick="sendToQBO()">↗ QuickBooks</button>
+          <button class="btn btn-ghost btn-sm" onclick="closePO()">← Back</button>
+        </div>
+        <div id="po-document"></div>
+      </div>
+      <div id="apanel-dashboard" class="admin-panel active"><div id="dash-content"></div></div>
+      <div id="apanel-production" class="admin-panel"><div id="prod-content"></div></div>
+      <div id="apanel-orders" class="admin-panel"><div id="orders-content"></div></div>
+      <div id="apanel-upcoming" class="admin-panel"><div id="upcoming-content"></div></div>
+      <div id="apanel-ezcater" class="admin-panel"><div id="ezcater-content"></div></div>
+      <div id="apanel-route" class="admin-panel"><div id="route-content"></div></div>
+      <div id="apanel-clients" class="admin-panel"><div id="clients-content"></div></div>
+      <div id="apanel-team" class="admin-panel"><div id="team-content"></div></div>
+      <div id="apanel-messages" class="admin-panel"><div id="messages-content"></div></div>
+    </div>
+  </div>
+  <div class="bottom-nav" id="admin-bnav">
+    <button class="bnav-item active" onclick="adminTab('dashboard',null);setBActive(this,'admin-bnav')"><span class="bnav-icon">🏠</span>Dash</button>
+    <button class="bnav-item" onclick="adminTab('production',null);setBActive(this,'admin-bnav')"><span class="bnav-icon">📦</span>Prod</button>
+    <button class="bnav-item" onclick="adminTab('orders',null);setBActive(this,'admin-bnav')"><span class="bnav-icon">📋</span>Orders</button>
+    <button class="bnav-item" onclick="adminTab('route',null);setBActive(this,'admin-bnav')"><span class="bnav-icon">🗺</span>Route</button>
+    <button class="bnav-item" onclick="adminTab('ezcater',null);setBActive(this,'admin-bnav')"><span class="bnav-icon">🟠</span>EZCater</button>
+  </div>
+  <div class="mob-pad"></div>
+</div>
+
+<!-- INVITE MODAL -->
+<div class="modal-wrap" id="invite-modal">
+  <div class="modal-card">
+    <h2 style="font-size:18px;font-weight:800;color:var(--brown);margin-bottom:16px">Invite New Client</h2>
+    <div style="background:var(--gold-pale);border:1px solid var(--gold-lt);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--brown-mid);margin-bottom:14px">🔒 Clients can only join via invitation. They cannot self-register.</div>
+    <div class="form-field"><label class="form-label">Company name</label><input class="form-input" id="inv-company" type="text" placeholder="The Fold"></div>
+    <div class="form-field"><label class="form-label">Contact name</label><input class="form-input" id="inv-name" type="text" placeholder="Ashley"></div>
+    <div class="form-field"><label class="form-label">Email</label><input class="form-input" id="inv-email" type="email" placeholder="ashley@thefold.com"></div>
+    <div class="form-field"><label class="form-label">Delivery type</label>
+      <select class="form-input" id="inv-dtype"><option value="delivery">Delivery</option><option value="pickup">Pickup</option></select></div>
+    <div class="form-field"><label class="form-label">Preferred delivery window</label>
+      <select class="form-input" id="inv-window">
+        <option>6:00–8:00 AM (early)</option><option>7:00–9:00 AM (standard)</option>
+        <option>8:00–10:00 AM (late morning)</option><option>TBD</option>
+      </select></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:12px" onclick="generateInviteLink()">Generate Invite Link</button>
+    <div id="invite-link-result" style="display:none">
+      <p class="pill-label" style="margin-bottom:6px">Share this link with your client</p>
+      <div style="background:var(--sage-pale);border:1px solid #C8DBC9;border-radius:8px;padding:12px;font-size:11px;color:var(--brown-mid);word-break:break-all;cursor:pointer" id="invite-link-text" onclick="copyInviteLink()">Click to copy…</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="closeModal('invite-modal')">Close</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+// ════════════════════════════════
+// DATA
+// ════════════════════════════════
+const CATALOG=[
+  {cat:"Sweet Viennoiserie",items:[
+    {sku:1,name:"Croissant",desc:"Classic butter croissant",price:2.65,min:1,allergens:""},
+    {sku:2,name:"Pain au Chocolat",desc:"Valrhona dark chocolate",price:2.85,min:1,allergens:""},
+    {sku:3,name:"Almond Croissant",desc:"Butter croissant, almond cream",price:3.00,min:1,allergens:"Nuts"},
+    {sku:4,name:"Chocolate Almond",desc:"Chocolate + almond cream",price:3.00,min:1,allergens:"Nuts"},
+    {sku:5,name:"Kouign Amann",desc:"Caramelized croissant dough",price:2.70,min:1,allergens:""},
+    {sku:6,name:"Morning Bun",desc:"Cinnamon, orange zest, glaze",price:2.85,min:1,allergens:""},
+    {sku:7,name:"Pain Suisse",desc:"Valrhona chocolate cream & chips",price:2.95,min:1,allergens:""},
+    {sku:8,name:"Lemon Cream",desc:"Lemon curd, croissant dough",price:3.10,min:1,allergens:""},
+    {sku:9,name:"Pistachio Cherry",desc:"Pistachio frangipane, dark cherry jam",price:3.10,min:1,allergens:"Nuts"},
+    {sku:10,name:"Raspberry Bow",desc:"Raspberry jam filling",price:3.10,min:1,allergens:""},
+  ]},
+  {cat:"Savory Viennoiserie",items:[
+    {sku:11,name:"Ham & Cheese",desc:"Dijon, Parisian ham, Swiss cheese",price:3.00,min:1,allergens:""},
+    {sku:12,name:"Spicy Cheddar & Copa",desc:"Calabrian pepper, coppa, cheddar",price:3.00,min:1,allergens:""},
+    {sku:13,name:"Mozzarella Sundried Tomato",desc:"Mozzarella, sundried tomato, pesto",price:3.00,min:1,allergens:""},
+    {sku:14,name:"Truffle Mushroom",desc:"Béchamel, portobello, truffle oil",price:3.00,min:1,allergens:""},
+  ]},
+  {cat:"Minis — 12 minimum",items:[
+    {sku:15,name:"Mini Croissant",desc:"Dozen minimum",price:1.50,min:12,allergens:""},
+    {sku:16,name:"Mini Pain au Chocolat",desc:"Dozen minimum",price:1.60,min:12,allergens:""},
+    {sku:17,name:"Mini Almond Croissant",desc:"Dozen minimum",price:1.70,min:12,allergens:"Nuts"},
+    {sku:18,name:"Mini Morning Bun",desc:"Dozen minimum",price:1.65,min:12,allergens:""},
+    {sku:19,name:"Mini Pain Suisse",desc:"Dozen minimum",price:1.70,min:12,allergens:""},
+    {sku:20,name:"Mini Ham & Cheese",desc:"Dozen minimum",price:1.70,min:12,allergens:""},
+  ]},
+  {cat:"Cookies & Pastries",items:[
+    {sku:21,name:"Financier",desc:"Almond tea cakes",price:2.45,min:1,allergens:"Nuts"},
+    {sku:22,name:"Tigré",desc:"Financier with Valrhona ganache",price:3.85,min:1,allergens:"Nuts"},
+    {sku:23,name:"Chocolate Chip Cookie",desc:"Classic, big chocolate chunks",price:3.50,min:1,allergens:""},
+  ]},
+  {cat:"Specials — 12 minimum",items:[
+    {sku:24,name:"Sliders",desc:"Mini brioche, can be frozen",price:0.65,min:12,allergens:"Dairy"},
+    {sku:25,name:"Brioche Buns",desc:"Brioche buns, can be frozen",price:1.15,min:12,allergens:"Dairy"},
+  ]},
+];
+
+const CUTOFFS={2:{day:"Saturday",hour:11},3:{day:"Sunday",hour:11},4:{day:"Tuesday",hour:11},5:{day:"Wednesday",hour:11},6:{day:"Thursday",hour:11},0:{day:"Friday",hour:11}};
+const DAY_NAMES=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+const USERS=[
+  {id:"admin",name:"Admin",role:"admin",email:"admin@carousel.com",pass:"carousel2026",label:"Admin"},
+  {id:"kitchen",name:"Kitchen",role:"kitchen",email:"kitchen@carousel.com",pass:"kitchen2026",label:"Cuisine (BOF)"},
+  {id:"ben",name:"Ben",role:"driver",email:"ben@carousel.com",pass:"driver2026",label:"Driver — Ben",deliveryDays:[2,3,4,5,6]},
+  {id:"nader",name:"Nader",role:"driver",email:"nader@carousel.com",pass:"nader2026",label:"Driver — Nader",deliveryDays:[0,6]},
+  {id:"sales",name:"Sales Rep",role:"sales",email:"sales@carousel.com",pass:"sales2026",label:"Sales Rep"},
+  {id:"ashley",name:"Ashley",role:"client",email:"ashley@thefold.com",pass:"fold2026",company:"The Fold",address:"123 Market St, San Francisco, CA",deliveryType:"delivery",deliveryDays:[0,3,6],deliveryWindow:"7:00–9:00 AM",label:"The Fold"},
+  {id:"fromagerie",name:"Fromagerie",role:"client",email:"orders@fromagerie.com",pass:"fromage2026",company:"La Fromagerie SF",address:"456 Valencia St, San Francisco, CA",deliveryType:"delivery",deliveryDays:[2,3,5,6,0],deliveryWindow:"6:00–8:00 AM",label:"La Fromagerie"},
+  {id:"stanford",name:"Stanford",role:"client",email:"orders@stanfordcoffee.com",pass:"stanford2026",company:"Stanford Coffee",address:"789 University Ave, Palo Alto, CA",deliveryType:"delivery",deliveryDays:[2,3,4,5],deliveryWindow:"7:00–9:00 AM",label:"Stanford Coffee"},
+  {id:"kopiku",name:"Kopiku",role:"client",email:"orders@kopiku.com",pass:"kopiku2026",company:"Kopiku Coffee",address:"321 Castro St, San Francisco, CA",deliveryType:"delivery",deliveryDays:[2,3,4,5,6],deliveryWindow:"8:00–10:00 AM",label:"Kopiku Coffee"},
+  {id:"tilden",name:"Tilden",role:"client",email:"tilden@carousel.com",pass:"tilden2026",company:"Carousel at Tilden",address:"345 Taylor St, San Francisco, CA",deliveryType:"pickup",deliveryDays:[2,3,4,5,6,0],deliveryWindow:"Pickup anytime",label:"Tilden Hotel"},
+];
+
+let ORDERS=[
+  {id:"PO-2026-001",clientId:"ashley",clientName:"The Fold",clientAddress:"123 Market St, SF",deliveryDate:"2026-05-17",deliveryType:"delivery",deliveryWindow:"7:00–9:00 AM",items:[{sku:1,name:"Croissant",qty:3,price:2.65},{sku:3,name:"Almond Croissant",qty:2,price:3.00},{sku:14,name:"Truffle Mushroom",qty:3,price:3.00},{sku:11,name:"Ham & Cheese",qty:3,price:3.00},{sku:23,name:"Chocolate Chip Cookie",qty:5,price:3.50}],subtotal:46.45,deliveryFee:6,total:52.45,status:"confirmed",type:"one-time",recurringDays:[],placedAt:"2026-05-14T09:23:00",notes:"Event day override"},
+  {id:"PO-2026-002",clientId:"fromagerie",clientName:"La Fromagerie SF",clientAddress:"456 Valencia St, SF",deliveryDate:"2026-05-15",deliveryType:"delivery",deliveryWindow:"6:00–8:00 AM",items:[{sku:1,name:"Croissant",qty:15,price:2.65},{sku:2,name:"Pain au Chocolat",qty:15,price:2.85},{sku:5,name:"Kouign Amann",qty:8,price:2.70}],subtotal:103.35,deliveryFee:6,total:109.35,status:"delivered",type:"standing",recurringDays:[2,3,5],placedAt:"2026-05-11T08:00:00",notes:""},
+  {id:"PO-2026-003",clientId:"stanford",clientName:"Stanford Coffee",clientAddress:"789 University Ave, Palo Alto",deliveryDate:"2026-05-16",deliveryType:"delivery",deliveryWindow:"7:00–9:00 AM",items:[{sku:1,name:"Croissant",qty:8,price:2.65},{sku:15,name:"Mini Croissant",qty:12,price:1.50},{sku:16,name:"Mini Pain au Chocolat",qty:12,price:1.60}],subtotal:60.32,deliveryFee:6,total:66.32,status:"pending",type:"one-time",recurringDays:[],placedAt:"2026-05-13T14:10:00",notes:"Buzz unit 3"},
+  {id:"PO-2026-004",clientId:"kopiku",clientName:"Kopiku Coffee",clientAddress:"321 Castro St, SF",deliveryDate:"2026-05-14",deliveryType:"delivery",deliveryWindow:"8:00–10:00 AM",items:[{sku:1,name:"Croissant",qty:4,price:2.65},{sku:2,name:"Pain au Chocolat",qty:3,price:2.85},{sku:9,name:"Pistachio Cherry",qty:3,price:3.10},{sku:14,name:"Truffle Mushroom",qty:3,price:3.00}],subtotal:38.30,deliveryFee:6,total:44.30,status:"invoiced",type:"standing",recurringDays:[2,3,4,5,6],placedAt:"2026-05-10T08:00:00",notes:""},
+  {id:"PO-2026-005",clientId:"tilden",clientName:"Carousel at Tilden",clientAddress:"345 Taylor St, SF",deliveryDate:"2026-05-16",deliveryType:"pickup",deliveryWindow:"Pickup",items:[{sku:1,name:"Croissant",qty:18,price:2.65},{sku:2,name:"Pain au Chocolat",qty:20,price:2.85},{sku:11,name:"Ham & Cheese",qty:10,price:3.00},{sku:14,name:"Truffle Mushroom",qty:7,price:3.00}],subtotal:134.90,deliveryFee:0,total:134.90,status:"confirmed",type:"standing",recurringDays:[2,3,4,5,6,0],placedAt:"2026-05-10T08:00:00",notes:""},
+];
+
+let EZCATER_ORDERS=[
+  {id:"EZC-8821",event:"Tech Startup Breakfast",deliveryDate:"2026-05-16",deliveryAddress:"560 Mission St, SF",items:[{name:"Croissant",qty:24,unitPrice:3.50},{name:"Pain au Chocolat",qty:12,unitPrice:3.85},{name:"Almond Croissant",qty:12,unitPrice:4.55}],subtotal:163.20,status:"pending",notes:"Set up by 8:30 AM",imported:false},
+  {id:"EZC-8835",event:"Law Firm Partner Meeting",deliveryDate:"2026-05-17",deliveryAddress:"101 California St, Floor 32, SF",items:[{name:"Croissant",qty:18,unitPrice:3.50},{name:"Ham & Cheese",qty:12,unitPrice:4.55},{name:"Truffle Mushroom",qty:12,unitPrice:4.55}],subtotal:163.20,status:"confirmed",notes:"See reception Floor 32",imported:true},
+];
+
+let MESSAGES=[
+  {from:"ashley",fromName:"Ashley (The Fold)",text:"Hi! Can I add 6 more croissants to Sunday's order?",ts:"2026-05-14T10:15:00",role:"client"},
+  {from:"admin",fromName:"Le Carousel Patisserie",text:"Of course! Done — 6 croissants added to your order ✓",ts:"2026-05-14T10:32:00",role:"admin"},
+  {from:"fromagerie",fromName:"Fromagerie SF",text:"Quick question — do you offer gluten-free options?",ts:"2026-05-13T15:00:00",role:"client"},
+  {from:"admin",fromName:"Le Carousel Patisserie",text:"Currently we don't, but we're working on it for Q3. Stay tuned!",ts:"2026-05-13T15:20:00",role:"admin"},
+];
+
+// State
+let currentUser=null,currentWeekOffset=0,cart={},dType="delivery",selDelivDate=null;
+let orderType="one-time",recurringDays=[],driverSelDate=null;
+const salesCart={};
+
+// ════════ AUTH ════════
+// Demo pills removed — invitation-only access
+function doLogin(){
+  const email=document.getElementById("login-email").value.trim().toLowerCase();
+  const pass=document.getElementById("login-password").value;
+  const user=USERS.find(u=>u.email.toLowerCase()===email&&u.pass===pass);
+  if(!user){document.getElementById("login-error").style.display="block";return;}
+  document.getElementById("login-error").style.display="none";
+  currentUser=user;
+  const stayIn=document.getElementById("stay-signed-in")?.checked;
+  if(stayIn) try{localStorage.setItem("carousel_session",JSON.stringify({id:user.id,ts:Date.now()}));}catch(e){}
+  launchUser(user);
+}
+function launchUser(user){
+  ({admin:showAdmin,kitchen:showKitchen,driver:showDriver,sales:showSales,client:showClient})[user.role]?.();
+}
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.getElementById("view-login").classList.contains("active"))doLogin();});
+function doLogout(){
+  currentUser=null;cart={};selDelivDate=null;
+  try{localStorage.removeItem("carousel_session");}catch(e){}
+  showView("view-login");
+}
+function showView(id){document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.getElementById(id).classList.add("active");}
+
+// ════════ CLIENT ════════
+function showClient(){
+  showView("view-client");
+  document.getElementById("client-greeting").textContent=currentUser.name+" — "+currentUser.company;
+  renderRecurringDayBtns();renderDelivGrid();renderCatalog();renderStanding();renderClientHistory();renderClientMessages();
+  showCutoffBanner();
+}
+function getDeadline(delivDate,cutoff){
+  const names=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const d=new Date(delivDate);
+  while(d.toLocaleDateString("en-US",{weekday:"long"})!==cutoff.day) d.setDate(d.getDate()-1);
+  d.setHours(cutoff.hour,0,0,0);return d;
+}
+function renderDelivGrid(){
+  const grid=document.getElementById("delivery-grid"),now=new Date(),days=[];
+  for(let i=1;i<=14;i++){
+    const d=new Date(now);d.setDate(now.getDate()+i);
+    const dow=d.getDay();
+    if(dow===1||!currentUser.deliveryDays.includes(dow)) continue;
+    const cutoff=CUTOFFS[dow],deadline=getDeadline(d,cutoff);
+    days.push({date:d,dow,cutoff,deadline,isPast:now>deadline});
+    if(days.length>=6) break;
+  }
+  const win=currentUser.deliveryWindow||"";
+  grid.innerHTML=days.map(d=>{
+    const ds=d.date.toISOString().split("T")[0],sel=selDelivDate===ds;
+    return `<div class="del-card ${d.isPast?"disabled":""} ${sel?"selected":""}" onclick="selectDelivery('${ds}')">
+      <div class="del-day">${d.date.toLocaleDateString("en-US",{weekday:"long"})}</div>
+      <div class="del-date">${d.date.toLocaleDateString("en-US",{month:"short",day:"numeric"})}</div>
+      ${d.isPast?`<div style="font-size:10px;color:var(--red);margin-top:3px;font-weight:600">Cutoff passed</div>`:`<div class="del-cutoff">Order by ${d.cutoff.day} 11am</div>`}
+      ${win&&!d.isPast?`<div class="del-window">⏰ ${win}</div>`:""}
+    </div>`;
+  }).join("")||`<p style="color:var(--brown-lt);font-size:13px;grid-column:1/-1">No delivery dates available.</p>`;
+}
+function selectDelivery(ds){
+  selDelivDate=ds;
+  const d=new Date(ds+"T12:00:00");
+  document.getElementById("sidebar-delivery-info").innerHTML=`📅 <strong>${d.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})}</strong>`;
+  renderDelivGrid();updateSidebar();
+}
+function renderRecurringDayBtns(){
+  const container=document.getElementById("recurring-days");
+  const daysList=[{n:"Mon",d:1},{n:"Tue",d:2},{n:"Wed",d:3},{n:"Thu",d:4},{n:"Fri",d:5},{n:"Sat",d:6},{n:"Sun",d:0}];
+  container.innerHTML=daysList.map(({n,d})=>{
+    const avail=currentUser.deliveryDays.includes(d),active=recurringDays.includes(d);
+    return `<button class="rday-btn ${active?"active":""}" onclick="toggleRecurDay(${d},this)" ${!avail?"disabled style='opacity:.4;cursor:not-allowed'":""}>${n}</button>`;
+  }).join("");
+}
+function toggleRecurDay(dow,btn){
+  const idx=recurringDays.indexOf(dow);
+  if(idx>=0) recurringDays.splice(idx,1); else recurringDays.push(dow);
+  btn.classList.toggle("active",recurringDays.includes(dow));
+}
+function selectOrderType(type,card){
+  orderType=type;
+  document.querySelectorAll(".otype-card").forEach(c=>c.classList.remove("selected"));
+  card.classList.add("selected");
+  document.getElementById("recurring-config").style.display=type==="standing"?"block":"none";
+}
+function renderCatalog(){
+  document.getElementById("catalog-container").innerHTML=CATALOG.map(s=>`
+    <div style="margin-bottom:20px">
+      <div class="cat-title">${s.cat}</div>
+      ${s.items.map(item=>`
+        <div class="prod-row">
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:13px;color:var(--dark)">${item.name}</div>
+            <div style="font-size:11px;color:var(--brown-lt)">${item.desc}</div>
+            ${item.allergens?`<div style="font-size:10px;color:var(--red);font-weight:500">⚠ ${item.allergens}</div>`:""}
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--brown);width:42px;text-align:right">$${item.price.toFixed(2)}</div>
+          <div style="font-size:10px;color:var(--brown-lt);width:42px;text-align:center;font-weight:600">${item.min>1?`min ${item.min}`:""}</div>
+          <div class="qty-ctrl">
+            <button class="qty-btn" onclick="changeQty(${item.sku},-1,${item.min})">−</button>
+            <span class="qty-val" id="qty-${item.sku}">${cart[item.sku]||0}</span>
+            <button class="qty-btn" onclick="changeQty(${item.sku},1,${item.min})">+</button>
+          </div>
+        </div>`).join("")}
+    </div>`).join("");
+}
+function changeQty(sku,delta,min){
+  let nv=(cart[sku]||0)+delta;
+  if(nv<0) nv=0;
+  if(delta>0&&nv>0&&nv<min) nv=min;
+  if(delta<0&&nv>0&&nv<min) nv=0;
+  if(nv===0) delete cart[sku]; else cart[sku]=nv;
+  const el=document.getElementById("qty-"+sku);if(el) el.textContent=nv;
+  updateSidebar();
+}
+function setDType(t){
+  dType=t;
+  document.getElementById("dtype-delivery").classList.toggle("active",t==="delivery");
+  document.getElementById("dtype-pickup").classList.toggle("active",t==="pickup");
+  document.getElementById("sb-fee-row").style.display=t==="delivery"?"flex":"none";
+  updateSidebar();
+}
+function updateSidebar(){
+  const allItems=CATALOG.flatMap(s=>s.items);
+  const lines=Object.entries(cart).map(([sku,qty])=>{const item=allItems.find(i=>i.sku==sku);return item?{item,qty,total:item.price*qty}:null;}).filter(Boolean);
+  const subtotal=lines.reduce((s,l)=>s+l.total,0),fee=dType==="delivery"?6:0,total=subtotal+fee;
+  const linesEl=document.getElementById("order-lines");
+  linesEl.innerHTML=lines.length?lines.map(l=>`<div class="order-line"><span style="font-size:12px;flex:1">${l.item.name}</span><span style="font-size:11px;color:var(--brown-lt)">×${l.qty}</span><span style="font-size:12px;font-weight:700;color:var(--brown);margin-left:6px">$${l.total.toFixed(2)}</span></div>`).join(""):`<div class="order-empty">No items yet</div>`;
+  document.getElementById("sb-subtotal").textContent="$"+subtotal.toFixed(2);
+  document.getElementById("sb-total").textContent="$"+total.toFixed(2);
+  const mw=document.getElementById("moq-warn"),mo=document.getElementById("moq-ok");
+  if(subtotal===0){mw.style.display="none";mo.style.display="none";}
+  else if(subtotal<45){mw.style.display="block";mo.style.display="none";}
+  else{mw.style.display="none";mo.style.display="block";}
+  const violations=lines.filter(l=>l.item.min>1&&l.qty<l.item.min);
+  const mq=document.getElementById("minqty-warn");
+  mq.style.display=violations.length?"block":"none";
+  if(violations.length) mq.textContent=`Min ${violations[0].item.min} pcs: ${violations.map(v=>v.item.name).join(", ")}`;
+  const badge=document.getElementById("cart-badge");
+  if(badge) badge.textContent=lines.length?`Cart (${lines.length})`:"Cart";
+}
+function submitOrder(){
+  if(!selDelivDate){showToast("Select a delivery date first.");return;}
+  const allItems=CATALOG.flatMap(s=>s.items);
+  const lines=Object.entries(cart).map(([sku,qty])=>{const item=allItems.find(i=>i.sku==sku);return item?{sku:parseInt(sku),name:item.name,qty,price:item.price}:null;}).filter(Boolean);
+  if(!lines.length){showToast("Add at least one item.");return;}
+  const subtotal=lines.reduce((s,l)=>s+l.price*l.qty,0);
+  if(subtotal<45){showToast("Minimum order is $45.");return;}
+  if(orderType==="standing"&&recurringDays.length===0){showToast("Select recurring days for standing order.");return;}
+  const fee=dType==="delivery"?6:0;
+  const id="PO-2026-"+String(Date.now()).slice(-3);
+  const order={id,clientId:currentUser.id,clientName:currentUser.company,clientAddress:currentUser.address||"",
+    deliveryDate:selDelivDate,deliveryType:dType,deliveryWindow:currentUser.deliveryWindow||"",
+    items:lines,subtotal,deliveryFee:fee,total:subtotal+fee,
+    status:"pending",type:orderType,recurringDays:orderType==="standing"?[...recurringDays]:[],
+    placedAt:new Date().toISOString(),notes:document.getElementById("order-notes").value};
+  ORDERS.push(order);
+  const dLabel=new Date(selDelivDate+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+  const typeLabel=orderType==="standing"?`Recurring (${recurringDays.map(d=>DAY_NAMES[d]).join(", ")})`:"One-time";
+  document.getElementById("modal-details").innerHTML=`<div class="divider"></div>${[["Order #",id],["Delivery",dLabel],["Type",typeLabel],["Total","$"+order.total.toFixed(2)]].map(([k,v])=>`<div class="modal-detail-row"><span style="color:var(--brown-lt)">${k}</span><span style="font-weight:700;color:var(--brown)">${v}</span></div>`).join("")}`;
+  document.getElementById("confirm-modal").classList.add("open");
+  cart={};selDelivDate=null;orderType="one-time";recurringDays=[];
+  renderDelivGrid();renderCatalog();updateSidebar();setDType("delivery");
+  document.querySelectorAll(".otype-card").forEach((c,i)=>c.classList.toggle("selected",i===0));
+  document.getElementById("recurring-config").style.display="none";
+}
+function closeModal(id){document.getElementById(id).classList.remove("open");}
+function showMobileCart(){
+  const allItems=CATALOG.flatMap(s=>s.items);
+  const lines=Object.entries(cart).map(([sku,qty])=>{const item=allItems.find(i=>i.sku==sku);return item?{item,qty,total:item.price*qty}:null;}).filter(Boolean);
+  const subtotal=lines.reduce((s,l)=>s+l.total,0),fee=dType==="delivery"?6:0;
+  document.getElementById("cart-modal-lines").innerHTML=lines.length?lines.map(l=>`<div class="order-line"><span style="font-size:13px;flex:1">${l.item.name}</span><span style="font-size:12px;color:var(--brown-lt)">×${l.qty}</span><span style="font-size:13px;font-weight:700;color:var(--brown);margin-left:6px">$${l.total.toFixed(2)}</span></div>`).join(""):`<div class="order-empty">Cart is empty</div>`;
+  document.getElementById("cart-modal-total").textContent="$"+(subtotal+fee).toFixed(2);
+  document.getElementById("cart-modal").classList.add("open");
+}
+function clientTab(tab,btn){
+  ["order","standing","history","messages"].forEach(t=>{const el=document.getElementById("ctab-"+t);if(el)el.style.display=t===tab?"block":"none";});
+  document.querySelectorAll("#view-client .ftabs .ftab").forEach(b=>b.classList.remove("active"));
+  if(btn) btn.classList.add("active");
+}
+function renderStanding(){
+  const container=document.getElementById("standing-container");
+  const uo=ORDERS.filter(o=>o.clientId===currentUser.id&&o.type==="standing");
+  if(!uo.length){container.innerHTML=`<div class="card" style="padding:20px;text-align:center"><p style="color:var(--brown-lt);font-size:13px;font-style:italic">No standing order yet.<br>Select "Recurring" when placing an order.</p></div>`;return;}
+  const last=uo[uo.length-1];
+  container.innerHTML=`<div class="card" style="padding:14px;margin-bottom:12px">
+    <div style="font-size:12px;color:var(--brown-mid);margin-bottom:10px">🔄 Recurring: <strong>${(last.recurringDays||[]).map(d=>DAY_NAMES[d]).join(", ")||"—"}</strong></div>
+    ${last.items.map(i=>`<div class="prod-row" style="padding:8px 0"><div style="flex:1"><div style="font-weight:600;font-size:13px">${i.name}</div></div><div class="qty-ctrl"><button class="qty-btn">−</button><span class="qty-val">${i.qty}</span><button class="qty-btn">+</button></div></div>`).join("")}
+  </div>`;
+}
+function renderClientHistory(){
+  const container=document.getElementById("history-container");
+  const uo=ORDERS.filter(o=>o.clientId===currentUser.id).sort((a,b)=>new Date(b.placedAt)-new Date(a.placedAt));
+  if(!uo.length){container.innerHTML=`<p style="color:var(--brown-lt);font-size:13px;font-style:italic">No past orders.</p>`;return;}
+  container.innerHTML=uo.map(o=>`
+    <div class="card" style="margin-bottom:10px;overflow:hidden">
+      <div style="padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:#FDFAF6" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='block'?'none':'block'">
+        <div><span style="font-weight:700;font-size:13px">${fmtDate(new Date(o.deliveryDate+"T12:00:00"))}</span>
+          <span style="font-size:11px;color:var(--brown-lt);margin-left:8px">${o.id}</span>
+          ${o.type==="standing"?`<span class="badge badge-blue" style="margin-left:6px;font-size:10px">recurring</span>`:""}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:700;color:var(--brown)">$${o.total.toFixed(2)}</span><span class="status-chip status-${o.status}">${o.status}</span></div>
+      </div>
+      <div style="display:none;padding:0 14px 12px">${o.items.map(i=>`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid var(--border)"><span>${i.qty}× ${i.name}</span><span style="color:var(--brown-mid)">$${(i.price*i.qty).toFixed(2)}</span></div>`).join("")}<div style="text-align:right;padding:8px 0;font-size:13px;font-weight:700;color:var(--brown)">Total: $${o.total.toFixed(2)}</div></div>
+    </div>`).join("");
+}
+function renderClientMessages(){
+  const container=document.getElementById("client-chat-messages");
+  const msgs=MESSAGES.filter(m=>m.from===currentUser.id||m.role==="admin");
+  container.innerHTML=msgs.length?msgs.map(m=>`
+    <div>
+      <div class="chat-msg ${m.role==="client"?"client":"admin"}">${m.text}</div>
+      <div class="chat-msg-meta" style="${m.role==="client"?"text-align:right":""}">${m.fromName} · ${new Date(m.ts).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}</div>
+    </div>`).join(""):`<p style="color:var(--brown-lt);font-size:13px;font-style:italic;text-align:center;padding:20px">No messages yet.</p>`;
+  container.scrollTop=container.scrollHeight;
+}
+function sendClientMsg(){
+  const input=document.getElementById("client-chat-input"),text=input.value.trim();
+  if(!text) return;
+  MESSAGES.push({from:currentUser.id,fromName:currentUser.name+" ("+currentUser.company+")",text,ts:new Date().toISOString(),role:"client"});
+  input.value="";renderClientMessages();
+  setTimeout(()=>{MESSAGES.push({from:"admin",fromName:"Le Carousel Patisserie",text:"Thanks! We'll get back to you shortly.",ts:new Date().toISOString(),role:"admin"});renderClientMessages();},1500);
+}
+
+// ════════ KITCHEN ════════
+function showKitchen(){showView("view-kitchen");renderKitchen();}
+function renderKitchen(){
+  const wo=getWeekOrders(currentWeekOffset);
+  document.getElementById("kitchen-week-label").textContent=getWeekLabel(currentWeekOffset);
+  const totals={};
+  wo.forEach(o=>o.items.forEach(i=>{totals[i.name]=(totals[i.name]||0)+i.qty;}));
+  document.getElementById("kitchen-summary").innerHTML=`<div class="k-summary">
+    <div class="k-sum-title">Total à produire — ${getWeekLabel(currentWeekOffset)}</div>
+    ${Object.entries(totals).filter(([,v])=>v>0).map(([name,qty])=>`<div class="k-sum-row"><span>${name}</span><span class="k-sum-qty">${qty}</span></div>`).join("")||'<div style="color:rgba(255,255,255,.4);font-size:13px;font-style:italic">No orders this week</div>'}
+  </div>`;
+  const now=new Date(),monday=new Date(now);
+  monday.setDate(now.getDate()-now.getDay()+1+(currentWeekOffset*7));
+  const days=["Tue","Wed","Thu","Fri","Sat","Sun"].map((name,i)=>{
+    const d=new Date(monday);d.setDate(monday.getDate()+1+i);
+    return {name,date:d,ds:d.toISOString().split("T")[0]};
+  });
+  document.getElementById("kitchen-orders").innerHTML=days.map(day=>{
+    const dayOrders=wo.filter(o=>o.deliveryDate===day.ds);
+    if(!dayOrders.length) return "";
+    return `<p style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px;font-weight:700">${day.name} ${day.date.toLocaleDateString("en-US",{month:"short",day:"numeric"})}</p>
+      ${dayOrders.map(o=>`<div class="kitchen-card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <div style="font-size:16px;font-weight:700;color:#fff">${o.clientName}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">${o.deliveryType==="delivery"?"🚚":"🏪"} ${o.deliveryWindow||""} · ${o.id}</div>
+          </div>
+          <button class="k-print-btn" onclick="printPO('${o.id}')">🖨 Print</button>
+        </div>
+        ${o.items.map(i=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span style="font-size:14px;color:rgba(255,255,255,.9);font-weight:500">${i.name}</span><span style="font-size:28px;font-weight:800;color:#E8C97A">${i.qty}</span></div>`).join("")}
+      </div>`).join("")}`;
+  }).join("");
+}
+
+// ════════ DRIVER ════════
+function showDriver(){showView("view-driver");renderDriverDayTabs();}
+function renderDriverDayTabs(){
+  const now=new Date(),monday=new Date(now);
+  monday.setDate(now.getDate()-now.getDay()+1+(currentWeekOffset*7));
+  const days=["Tue","Wed","Thu","Fri","Sat","Sun"].map((name,i)=>{
+    const d=new Date(monday);d.setDate(monday.getDate()+1+i);
+    return {name,date:d,ds:d.toISOString().split("T")[0]};
+  });
+  if(!driverSelDate) driverSelDate=days.find(d=>ORDERS.some(o=>o.deliveryDate===d.ds&&o.deliveryType==="delivery"))?.ds||days[0].ds;
+  document.getElementById("driver-day-tabs").innerHTML=days.map(day=>{
+    const count=ORDERS.filter(o=>o.deliveryDate===day.ds&&o.deliveryType==="delivery").length,sel=driverSelDate===day.ds;
+    return `<button onclick="driverSelDate='${day.ds}';renderDriverDayTabs()" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1.5px solid ${sel?"var(--brown)":"var(--border)"};background:${sel?"var(--brown)":"#fff"};color:${sel?"#fff":"var(--brown-mid)"};font-size:12px;font-weight:${sel?700:500};cursor:pointer;white-space:nowrap">
+      ${day.name} ${day.date.toLocaleDateString("en-US",{month:"short",day:"numeric"})}${count?` <span style="background:${sel?"rgba(255,255,255,.25)":"var(--gold-pale)"};color:${sel?"#fff":"var(--gold)"};border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700">${count}</span>`:""}
+    </button>`;
+  }).join("");
+  renderDriverRoute();
+}
+function renderDriverRoute(){
+  const container=document.getElementById("driver-main");
+  if(!driverSelDate){container.innerHTML="";return;}
+  const dayOrders=ORDERS.filter(o=>o.deliveryDate===driverSelDate&&o.deliveryType==="delivery");
+  if(!dayOrders.length){container.innerHTML=`<div class="card" style="padding:24px;text-align:center"><p style="color:var(--brown-lt);font-style:italic">No deliveries for this day.</p></div>`;return;}
+  const d=new Date(driverSelDate+"T12:00:00");
+  const totalPieces=dayOrders.reduce((s,o)=>s+o.items.reduce((ss,i)=>ss+i.qty,0),0);
+  const origin="Le+Carousel+Patisserie+345+Taylor+St+San+Francisco+CA";
+  const stops=dayOrders.map(o=>encodeURIComponent(o.clientAddress));
+  const mapsUrl=`https://www.google.com/maps/dir/${origin}/${stops.join("/")}`;
+  container.innerHTML=`
+    <div style="background:var(--gold-pale);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--brown-mid);margin-bottom:14px">📅 <strong>${fmtDateLong(d)}</strong></div>
+    <div class="driver-stats">
+      <div class="dstat"><div class="dstat-val">${dayOrders.length}</div><div class="dstat-label">Stops</div></div>
+      <div class="dstat"><div class="dstat-val">${totalPieces}</div><div class="dstat-label">Pieces</div></div>
+      <div class="dstat"><div class="dstat-val">$${dayOrders.reduce((s,o)=>s+o.total,0).toFixed(0)}</div><div class="dstat-label">Revenue</div></div>
+    </div>
+    <button class="route-btn" onclick="window.open('${mapsUrl}','_blank')">🗺 Open Full Route in Google Maps</button>
+    <div class="share-box">
+      <strong>Share route with driver</strong>
+      <div style="font-size:11px;word-break:break-all;color:var(--blue);margin-bottom:8px">${mapsUrl.substring(0,70)}…</div>
+      <button onclick="copyToClipboard('${mapsUrl}')" style="background:var(--brown);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-weight:600">📋 Copy link</button>
+    </div>
+    ${dayOrders.map((o,i)=>`
+      <div class="driver-stop" id="stop-${o.id}">
+        <div class="stop-header">
+          <div class="stop-num ${o.status==="delivered"?"done":""}" id="stopnum-${o.id}">${i+1}</div>
+          <div style="flex:1">
+            <div style="font-weight:700;font-size:14px;color:var(--dark)">${o.clientName}</div>
+            <div style="font-size:12px;color:var(--brown-lt);margin-top:2px">📍 ${o.clientAddress}</div>
+            ${o.deliveryWindow?`<div style="font-size:11px;color:var(--blue);margin-top:3px;font-weight:500">⏰ ${o.deliveryWindow}</div>`:""}
+            <div style="font-size:12px;color:var(--brown-mid);margin-top:4px">${o.items.map(it=>`${it.qty}× ${it.name}`).join(", ")}</div>
+            ${o.notes?`<div style="font-size:11px;color:var(--brown-lt);margin-top:3px;font-style:italic">"${o.notes}"</div>`:""}
+          </div>
+          <div style="display:flex;gap:6px;flex-direction:column;align-items:flex-end">
+            <button class="btn-maps" onclick="window.open('https://www.google.com/maps/dir/345+Taylor+St+San+Francisco/${encodeURIComponent(o.clientAddress)}','_blank')">🗺 Nav</button>
+            <button class="btn-delivered ${o.status==="delivered"?"done":""}" id="deliv-${o.id}" onclick="markDeliveredDriver('${o.id}',this)">${o.status==="delivered"?"✓ Done":"Delivered"}</button>
+          </div>
+        </div>
+      </div>`).join("")}`;
+}
+function markDeliveredDriver(id,btn){
+  const o=ORDERS.find(x=>x.id===id);
+  if(o){o.status="delivered";btn.classList.add("done");btn.textContent="✓ Done";const n=document.getElementById("stopnum-"+id);if(n) n.classList.add("done");showToast("✓ Delivered: "+o.clientName);}
+}
+
+// ════════ SALES ════════
+function showSales(){showView("view-sales");renderSalesOverview();}
+function salesTab(tab,btn){
+  ["overview","orders","clients","neworder"].forEach(t=>{const el=document.getElementById("stab-"+t);if(el) el.style.display=t===tab?"block":"none";});
+  document.querySelectorAll("#sales-tabs .ftab").forEach(b=>b.classList.remove("active"));
+  if(btn) btn.classList.add("active");
+  if(tab==="overview") renderSalesOverview();
+  if(tab==="orders") renderSalesOrders();
+  if(tab==="clients") renderSalesClients();
+  if(tab==="neworder") renderSalesNewOrder();
+}
+function renderSalesOverview(){
+  const wo=getWeekOrders(0),rev=wo.reduce((s,o)=>s+o.total,0);
+  document.getElementById("sales-overview").innerHTML=`
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-val">${wo.length}</div><div class="stat-label">Orders this week</div></div>
+      <div class="stat-card"><div class="stat-val">$${rev.toFixed(0)}</div><div class="stat-label">Revenue</div></div>
+      <div class="stat-card"><div class="stat-val">${USERS.filter(u=>u.role==="client").length}</div><div class="stat-label">Active clients</div></div>
+      <div class="stat-card"><div class="stat-val">${wo.filter(o=>o.status==="pending").length}</div><div class="stat-label">Pending</div></div>
+    </div>
+    <p class="pill-label" style="margin-bottom:10px">Recent orders</p>
+    ${wo.slice(0,5).map(o=>`<div class="alert-card" style="margin-bottom:7px"><div style="flex:1"><div style="font-weight:700;font-size:13px">${o.clientName}</div><div style="font-size:12px;color:var(--brown-lt)">${fmtDate(new Date(o.deliveryDate+"T12:00:00"))} · $${o.total.toFixed(2)}</div></div><span class="status-chip status-${o.status}">${o.status}</span></div>`).join("")||"<p style='color:var(--brown-lt);font-size:13px;font-style:italic'>No orders this week.</p>"}`;
+}
+function renderSalesOrders(){
+  document.getElementById("sales-orders").innerHTML=`<div style="overflow-x:auto"><table class="data-table" style="background:#fff;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)">
+    <thead><tr><th>Client</th><th>Delivery</th><th>Window</th><th>Total</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>${ORDERS.sort((a,b)=>new Date(b.placedAt)-new Date(a.placedAt)).map(o=>`<tr>
+      <td><strong>${o.clientName}</strong></td>
+      <td>${fmtDate(new Date(o.deliveryDate+"T12:00:00"))}</td>
+      <td style="font-size:11px;color:var(--blue);font-weight:600">${o.deliveryWindow||"—"}</td>
+      <td><strong>$${o.total.toFixed(2)}</strong></td>
+      <td><span class="badge badge-brown">${o.type}</span></td>
+      <td><span class="status-chip status-${o.status}">${o.status}</span></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="printPO('${o.id}')">🖨 PO</button></td>
+    </tr>`).join("")}</tbody>
+  </table></div>`;
+}
+function renderSalesClients(){
+  document.getElementById("sales-clients").innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+    ${USERS.filter(u=>u.role==="client").map(c=>`<div class="card" style="padding:14px">
+      <div style="font-weight:700;font-size:14px;margin-bottom:3px">${c.company}</div>
+      <div style="font-size:12px;color:var(--brown-lt);margin-bottom:8px">${c.email}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <span class="badge ${c.deliveryType==="delivery"?"badge-sage":"badge-gold"}">${c.deliveryType}</span>
+        ${c.deliveryWindow?`<span class="badge badge-blue" style="font-size:10px">⏰ ${c.deliveryWindow}</span>`:""}
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--brown-mid);margin-bottom:8px">📅 ${c.deliveryDays.map(d=>DAY_NAMES[d]).join(" · ")}</div>
+      <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick="salesTab('neworder',null);setTimeout(()=>{const s=document.getElementById('sales-order-client');if(s)s.value='${c.id}';},50)">+ Create Order</button>
+    </div>`).join("")}
+  </div>`;
+}
+function renderSalesNewOrder(){
+  const clients=USERS.filter(u=>u.role==="client");
+  document.getElementById("sales-neworder").innerHTML=`
+    <h3 style="font-size:16px;font-weight:700;color:var(--brown);margin-bottom:16px">Create Order for Client</h3>
+    <div class="card" style="padding:16px;max-width:480px">
+      <div class="form-field"><label class="form-label">Client</label>
+        <select class="form-input" id="sales-order-client">${clients.map(c=>`<option value="${c.id}">${c.company}</option>`).join("")}</select></div>
+      <div class="form-field"><label class="form-label">Delivery date</label>
+        <input class="form-input" type="date" id="sales-order-date" min="${new Date().toISOString().split("T")[0]}"></div>
+      <div class="form-field"><label class="form-label">Order type</label>
+        <select class="form-input" id="sales-order-type"><option value="one-time">One-time</option><option value="standing">Standing (recurring)</option></select></div>
+      <div class="form-field"><label class="form-label">Notes</label>
+        <textarea class="notes-area" id="sales-order-notes" placeholder="Special instructions…"></textarea></div>
+      <p class="pill-label" style="margin-bottom:10px">Items</p>
+      <div style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:10px">
+        ${CATALOG.flatMap(s=>s.items).map(item=>`
+          <div class="prod-row"><div style="flex:1"><div style="font-weight:600;font-size:12px">${item.name}</div><div style="font-size:10px;color:var(--brown-lt)">$${item.price.toFixed(2)}${item.min>1?" · min "+item.min:""}</div></div>
+          <div class="qty-ctrl"><button class="qty-btn" onclick="changeSalesQty(${item.sku},-1,${item.min})">−</button><span class="qty-val" id="sqty-${item.sku}">0</span><button class="qty-btn" onclick="changeSalesQty(${item.sku},1,${item.min})">+</button></div></div>`).join("")}
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:14px;justify-content:center" onclick="submitSalesOrder()">Create Order</button>
+    </div>`;
+}
+function changeSalesQty(sku,delta,min){
+  let nv=(salesCart[sku]||0)+delta;
+  if(nv<0) nv=0;if(delta>0&&nv>0&&nv<min) nv=min;if(delta<0&&nv>0&&nv<min) nv=0;
+  if(nv===0) delete salesCart[sku]; else salesCart[sku]=nv;
+  const el=document.getElementById("sqty-"+sku);if(el) el.textContent=nv;
+}
+function submitSalesOrder(){
+  const clientId=document.getElementById("sales-order-client").value;
+  const delivDate=document.getElementById("sales-order-date").value;
+  const type=document.getElementById("sales-order-type").value;
+  if(!delivDate){showToast("Select a delivery date.");return;}
+  const client=USERS.find(u=>u.id===clientId);
+  const allItems=CATALOG.flatMap(s=>s.items);
+  const lines=Object.entries(salesCart).map(([sku,qty])=>{const item=allItems.find(i=>i.sku==sku);return item?{sku:parseInt(sku),name:item.name,qty,price:item.price}:null;}).filter(Boolean);
+  if(!lines.length){showToast("Add at least one item.");return;}
+  const subtotal=lines.reduce((s,l)=>s+l.price*l.qty,0),fee=client.deliveryType==="delivery"?6:0;
+  const id="PO-2026-S"+String(Date.now()).slice(-3);
+  ORDERS.push({id,clientId,clientName:client.company,clientAddress:client.address||"",deliveryDate:delivDate,deliveryType:client.deliveryType,deliveryWindow:client.deliveryWindow||"",items:lines,subtotal,deliveryFee:fee,total:subtotal+fee,status:"confirmed",type,recurringDays:[],placedAt:new Date().toISOString(),notes:document.getElementById("sales-order-notes").value});
+  Object.keys(salesCart).forEach(k=>delete salesCart[k]);
+  document.querySelectorAll("[id^='sqty-']").forEach(el=>el.textContent="0");
+  showToast("Order created for "+client.company+" ✓");
+  salesTab("orders",null);
+}
+
+// ════════ ADMIN ════════
+function showAdmin(){
+  showView("view-admin");
+  renderDashboard();renderProductionSheet();renderOrdersPanel();renderUpcomingPanel();renderEZCaterPanel();renderRoutePanel();renderClientsPanel();renderTeamPanel();renderAdminMessages();
+}
+function adminTab(tab,btn){
+  document.querySelectorAll(".admin-panel").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".anav-item").forEach(b=>b.classList.remove("active"));
+  const panel=document.getElementById("apanel-"+tab);if(panel) panel.classList.add("active");
+  if(btn) btn.classList.add("active");
+}
+function renderDashboard(){
+  const wo=getWeekOrders(0),rev=wo.reduce((s,o)=>s+o.total,0),pcs=wo.reduce((s,o)=>s+o.items.reduce((ss,i)=>ss+i.qty,0),0);
+  const ezPending=EZCATER_ORDERS.filter(o=>!o.imported).length;
+  document.getElementById("dash-content").innerHTML=`
+    <div class="sec-header"><h2 class="sec-title">Good morning ☕</h2><span class="badge badge-gold">${fmtDate(new Date())}</span></div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-val">${wo.length}</div><div class="stat-label">Orders this week</div><div class="stat-sub">${wo.filter(o=>o.status==="pending").length} pending</div></div>
+      <div class="stat-card"><div class="stat-val">$${rev.toFixed(0)}</div><div class="stat-label">Revenue</div></div>
+      <div class="stat-card"><div class="stat-val">${pcs}</div><div class="stat-label">Pieces to produce</div></div>
+      <div class="stat-card"><div class="stat-val">${USERS.filter(u=>u.role==="client").length}</div><div class="stat-label">Active clients</div>${ezPending?`<div class="stat-sub" style="color:var(--ez)">${ezPending} EZCater pending</div>`:""}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div><p class="pill-label" style="margin-bottom:10px">⚠️ Alerts</p><div id="dash-alerts"></div></div>
+      <div><p class="pill-label" style="margin-bottom:10px">📋 This week</p><div id="dash-recent"></div></div>
+    </div>`;
+  const now=new Date(),alerts=[];
+  ORDERS.forEach(o=>{
+    const d=new Date(o.deliveryDate+"T12:00:00"),dow=d.getDay(),cutoff=CUTOFFS[dow];
+    if(!cutoff) return;
+    const deadline=getDeadline(d,cutoff),hoursLeft=(deadline-now)/3600000;
+    if(hoursLeft>0&&hoursLeft<5&&o.status==="pending") alerts.push({type:"urgent",icon:"⏰",title:`Cutoff in ${Math.round(hoursLeft)}h — ${o.clientName}`,sub:`${fmtDate(d)} · ${o.id}`});
+  });
+  const future=ORDERS.filter(o=>new Date(o.deliveryDate+"T12:00:00")>new Date(now.getTime()+7*86400000));
+  if(future.length) alerts.push({type:"info",icon:"📅",title:`${future.length} order${future.length>1?"s":""} beyond next week`,sub:`Next: ${fmtDate(new Date(future[0].deliveryDate+"T12:00:00"))} — ${future[0].clientName}`});
+  if(ezPending) alerts.push({type:"info",icon:"🟠",title:`${ezPending} EZCater order${ezPending>1?"s":""} pending`,sub:"Review in EZCater tab"});
+  document.getElementById("dash-alerts").innerHTML=alerts.length?alerts.map(a=>`<div class="alert-card ${a.type}" style="margin-bottom:6px"><span style="font-size:16px">${a.icon}</span><div><div style="font-size:13px;font-weight:600">${a.title}</div><div style="font-size:12px;color:var(--brown-lt);margin-top:2px">${a.sub}</div></div></div>`).join(""):`<div class="alert-card"><span style="font-size:16px">✓</span><div><div style="font-size:13px;font-weight:600">All clear</div></div></div>`;
+  document.getElementById("dash-recent").innerHTML=wo.slice(0,5).map(o=>`<div class="alert-card" style="margin-bottom:6px"><div style="flex:1"><div style="font-weight:700;font-size:13px">${o.clientName}</div><div style="font-size:12px;color:var(--brown-lt)">${fmtDate(new Date(o.deliveryDate+"T12:00:00"))} · $${o.total.toFixed(2)}</div></div><span class="status-chip status-${o.status}">${o.status}</span></div>`).join("")||"<p style='color:var(--brown-lt);font-size:13px;font-style:italic'>No orders this week.</p>";
+}
+function renderProductionSheet(){
+  const wo=getWeekOrders(currentWeekOffset),lbl=getWeekLabel(currentWeekOffset);
+  document.getElementById("prod-content").innerHTML=`
+    <div class="sec-header">
+      <h2 class="sec-title">Production Sheet</h2>
+      <div class="week-nav">
+        <button class="week-btn" onclick="changeWeek(-1);renderProductionSheet()">‹</button>
+        <span class="week-label">${lbl}</span>
+        <button class="week-btn" onclick="changeWeek(1);renderProductionSheet()">›</button>
+        <button class="btn btn-ghost btn-sm" style="margin-left:6px" onclick="showToast('↗ Exporting to Google Sheets…')">↗ Export</button>
+      </div>
+    </div>
+    <div class="prod-week-grid" id="pwg"></div>
+    <div class="card"><div class="card-header"><span class="card-title">By product × day</span><span class="badge badge-gold" id="ptot"></span></div><div style="overflow-x:auto"><table class="prod-table" id="ptbl"></table></div></div>`;
+  const now=new Date(),monday=new Date(now);
+  monday.setDate(now.getDate()-now.getDay()+1+(currentWeekOffset*7));
+  const days=["Tue","Wed","Thu","Fri","Sat","Sun"].map((name,i)=>{
+    const d=new Date(monday);d.setDate(monday.getDate()+1+i);
+    return {name,date:d,ds:d.toISOString().split("T")[0],orders:wo.filter(o=>o.deliveryDate===d.toISOString().split("T")[0])};
+  });
+  document.getElementById("pwg").innerHTML=days.map(d=>{
+    const total=d.orders.reduce((s,o)=>s+o.items.reduce((ss,i)=>ss+i.qty,0),0);
+    return `<div class="prod-day-card"><div class="prod-day-name">${d.name}</div><div class="prod-day-date">${d.date.toLocaleDateString("en-US",{month:"short",day:"numeric"})}</div><div class="prod-day-total">${total}</div><div class="prod-day-label">pieces</div><div style="font-size:10px;color:var(--brown-lt);margin-top:4px;font-weight:600">${d.orders.length} order${d.orders.length!==1?"s":""}</div></div>`;
+  }).join("");
+  const productTotals={};
+  days.forEach(d=>{d.orders.forEach(o=>{o.items.forEach(item=>{if(!productTotals[item.sku]) productTotals[item.sku]={name:item.name,days:{}};productTotals[item.sku].days[d.ds]=(productTotals[item.sku].days[d.ds]||0)+item.qty;});});});
+  const rows=Object.values(productTotals).filter(p=>Object.values(p.days).some(v=>v>0));
+  const gt=rows.reduce((s,r)=>s+Object.values(r.days).reduce((ss,v)=>ss+v,0),0);
+  const badge=document.getElementById("ptot");if(badge) badge.textContent=gt+" total";
+  const table=document.getElementById("ptbl");
+  if(table) table.innerHTML=`<thead><tr><th>Product</th>${days.map(d=>`<th style="text-align:center">${d.name}<br><span style="font-weight:400;font-size:10px">${d.date.toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span></th>`).join("")}<th style="text-align:center">Total</th></tr></thead><tbody>${rows.map(row=>{const rt=Object.values(row.days).reduce((s,v)=>s+v,0);return`<tr><td style="font-weight:600">${row.name}</td>${days.map(d=>{const v=row.days[d.ds]||0;return`<td class="dc${v>0?" hi":""}">${v||"—"}</td>`;}).join("")}<td class="dc prod-total-cell">${rt}</td></tr>`;}).join("")}</tbody>`;
+}
+function renderOrdersPanel(){
+  const orders=getWeekOrders(currentWeekOffset),lbl=getWeekLabel(currentWeekOffset);
+  document.getElementById("orders-content").innerHTML=`
+    <div class="sec-header">
+      <h2 class="sec-title">All Orders</h2>
+      <div class="week-nav">
+        <button class="week-btn" onclick="changeWeek(-1);renderOrdersPanel()">‹</button>
+        <span class="week-label" style="font-size:13px">${lbl}</span>
+        <button class="week-btn" onclick="changeWeek(1);renderOrdersPanel()">›</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto"><table class="data-table" style="background:#fff;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)">
+      <thead><tr><th>Client</th><th>Delivery</th><th>Window</th><th>Items</th><th>Total</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${orders.map(o=>`<tr>
+        <td><strong>${o.clientName}</strong></td>
+        <td>${fmtDate(new Date(o.deliveryDate+"T12:00:00"))}<br><span style="font-size:11px;color:var(--brown-lt)">${o.deliveryType}</span></td>
+        <td style="font-size:11px;color:var(--blue);font-weight:600">${o.deliveryWindow||"—"}</td>
+        <td style="max-width:180px;font-size:12px;color:var(--brown-mid)">${o.items.slice(0,3).map(i=>`${i.qty}× ${i.name}`).join(", ")}${o.items.length>3?` +${o.items.length-3}`:""}</td>
+        <td><strong>$${o.total.toFixed(2)}</strong></td>
+        <td><span class="badge badge-brown">${o.type}</span></td>
+        <td><span class="status-chip status-${o.status}">${o.status}</span></td>
+        <td><div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="printPO('${o.id}')">🖨 PO</button>
+          ${o.status==="pending"?`<button class="btn btn-ghost btn-sm" onclick="confirmOrder('${o.id}')">Confirm</button>`:""}
+          ${o.status==="confirmed"?`<button class="btn btn-ghost btn-sm" onclick="markDelivered('${o.id}')">Delivered</button>`:""}
+          ${o.status==="delivered"?`<button class="btn btn-green btn-sm" onclick="createInvoice('${o.id}')">↗ Invoice</button>`:""}
+        </div></td>
+      </tr>`).join("")||`<tr><td colspan="8" style="text-align:center;color:var(--brown-lt);padding:24px;font-style:italic">No orders this week.</td></tr>`}
+      </tbody>
+    </table></div>`;
+}
+function confirmOrder(id){const o=ORDERS.find(x=>x.id===id);if(o){o.status="confirmed";renderOrdersPanel();renderDashboard();showToast("Order "+id+" confirmed ✓");}}
+function markDelivered(id){const o=ORDERS.find(x=>x.id===id);if(o){o.status="delivered";renderOrdersPanel();showToast("Marked as delivered");}}
+function createInvoice(id){const o=ORDERS.find(x=>x.id===id);if(o){o.status="invoiced";renderOrdersPanel();showToast("↗ Invoice created in QuickBooks for "+o.clientName);}}
+function renderUpcomingPanel(){
+  const now=new Date();
+  const upcoming=ORDERS.filter(o=>new Date(o.deliveryDate+"T12:00:00")>=now).sort((a,b)=>new Date(a.deliveryDate)-new Date(b.deliveryDate));
+  document.getElementById("upcoming-content").innerHTML=`
+    <h2 class="sec-title" style="margin-bottom:18px">Upcoming Orders</h2>
+    ${upcoming.length?upcoming.map(o=>{
+      const d=new Date(o.deliveryDate+"T12:00:00"),dow=d.getDay(),cutoff=CUTOFFS[dow];
+      const deadline=cutoff?getDeadline(d,cutoff):null,hoursLeft=deadline?(deadline-now)/3600000:null;
+      return `<div class="alert-card ${hoursLeft!==null&&hoursLeft<6&&hoursLeft>0?"urgent":"info"}" style="margin-bottom:8px">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <strong style="font-size:13px">${o.clientName}</strong>
+            <span class="badge badge-brown">${o.id}</span>
+            <span class="status-chip status-${o.status}">${o.status}</span>
+            ${o.type==="standing"?'<span class="badge badge-blue" style="font-size:10px">recurring</span>':""}
+          </div>
+          <div style="font-size:12px;color:var(--brown-lt);margin-top:4px">📅 ${fmtDate(d)} · ${o.deliveryType}${o.deliveryWindow?" · ⏰ "+o.deliveryWindow:""} · $${o.total.toFixed(2)}</div>
+          ${deadline?`<div style="font-size:11px;color:${hoursLeft<6?"var(--red)":"var(--sage)"};margin-top:3px;font-weight:600">⏱ Cutoff: ${cutoff.day} 11:00 AM</div>`:""}
+          <div style="font-size:12px;color:var(--brown-mid);margin-top:5px">${o.items.map(i=>`${i.qty}× ${i.name}`).join(", ")}</div>
+        </div>
+        <div style="display:flex;gap:5px;flex-direction:column">
+          <button class="btn btn-ghost btn-sm" onclick="printPO('${o.id}')">🖨 PO</button>
+          ${o.status==="pending"?`<button class="btn btn-ghost btn-sm" onclick="confirmOrder('${o.id}');renderUpcomingPanel()">Confirm</button>`:""}
+          ${o.status==="delivered"?`<button class="btn btn-green btn-sm" onclick="createInvoice('${o.id}');renderUpcomingPanel()">↗ Invoice</button>`:""}
+        </div>
+      </div>`;
+    }).join(""):`<div class="alert-card"><span>✓</span><div style="font-size:13px;font-weight:600">No upcoming orders</div></div>`}`;
+}
+function renderEZCaterPanel(){
+  document.getElementById("ezcater-content").innerHTML=`
+    <div class="sec-header"><h2 class="sec-title">🟠 EZCater Orders</h2><span class="badge badge-ez">Partner API</span></div>
+    <div style="background:var(--ez-pale);border:1px solid #FFCBA0;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--brown-mid)">
+      <strong style="color:var(--ez)">EZCater Public API (GraphQL webhooks)</strong><br>
+      Orders received via <code>orderSubmitted</code> event · Accept/reject via <code>acceptOrder</code> / <code>rejectOrder</code> mutations · Token: Settings → Integrations in ezManage
+    </div>
+    ${EZCATER_ORDERS.map(o=>`
+      <div style="background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:14px;margin-bottom:10px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-weight:700;font-size:14px">${o.event}</div>
+            <div style="font-size:12px;color:var(--brown-mid);margin-top:3px">📅 ${fmtDate(new Date(o.deliveryDate+"T12:00:00"))} · 📍 ${o.deliveryAddress}</div>
+            <div style="font-size:12px;color:var(--brown-lt);margin-top:2px;font-style:italic">"${o.notes}"</div>
+          </div>
+          <div style="text-align:right"><span class="badge ${o.status==="confirmed"?"badge-sage":"badge-gold"}">${o.status}</span><div style="font-size:13px;font-weight:700;color:var(--brown);margin-top:4px">$${o.subtotal.toFixed(2)}</div></div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:10px;margin-bottom:10px">
+          ${o.items.map(i=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid rgba(61,43,31,.05)"><span>${i.qty}× ${i.name}</span><span style="color:var(--brown-mid)">@ $${i.unitPrice.toFixed(2)} (EZCater pricing)</span></div>`).join("")}
+        </div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap">
+          ${!o.imported?`<button class="btn btn-primary btn-sm" onclick="importEZOrder('${o.id}')">↓ Add to Production</button>`:`<span class="badge badge-sage">✓ In production queue</span>`}
+          ${o.status==="pending"?`<button class="btn btn-green btn-sm" onclick="acceptEZOrder('${o.id}')">✓ Accept</button><button class="btn btn-sm" style="background:var(--red-pale);color:var(--red);border:none" onclick="showToast('Order ${o.id} rejected')">✕ Reject</button>`:""}
+          <button class="btn btn-ghost btn-sm" onclick="showToast('Printing EZCater order…')">🖨 Print</button>
+        </div>
+        <div style="font-size:11px;color:var(--brown-lt);margin-top:8px">ID: ${o.id}</div>
+      </div>`).join("")}`;
+}
+function importEZOrder(id){const o=EZCATER_ORDERS.find(x=>x.id===id);if(o){o.imported=true;renderEZCaterPanel();showToast("EZCater "+id+" added to production ✓");}}
+function acceptEZOrder(id){const o=EZCATER_ORDERS.find(x=>x.id===id);if(o){o.status="confirmed";renderEZCaterPanel();showToast("EZCater "+id+" accepted ✓");}}
+function renderRoutePanel(){
+  const now=new Date(),monday=new Date(now);
+  monday.setDate(now.getDate()-now.getDay()+1+(currentWeekOffset*7));
+  const days=["Tue","Wed","Thu","Fri","Sat","Sun"].map((name,i)=>{
+    const d=new Date(monday);d.setDate(monday.getDate()+1+i);
+    return {name,date:d,ds:d.toISOString().split("T")[0]};
+  });
+  const today=days.find(d=>d.ds===now.toISOString().split("T")[0])?.ds||days[0].ds;
+  document.getElementById("route-content").innerHTML=`
+    <div class="sec-header">
+      <h2 class="sec-title">Daily Route</h2>
+      <button class="btn btn-ghost btn-sm" onclick="showToast('SMS sent to all drivers with route links ✓')">📱 SMS drivers</button>
+    </div>
+    <div class="ftabs" id="route-tabs">${days.map(day=>{
+      const count=ORDERS.filter(o=>o.deliveryDate===day.ds&&o.deliveryType==="delivery").length;
+      return `<button class="ftab ${day.ds===today?"active":""}" onclick="renderRouteDayAdmin('${day.ds}',this)">${day.name} ${day.date.toLocaleDateString("en-US",{month:"short",day:"numeric"})}${count?` (${count})`:""}</button>`;
+    }).join("")}</div>
+    <div id="route-day-content"></div>`;
+  renderRouteDayAdmin(today,null);
+}
+function renderRouteDayAdmin(ds,btn){
+  if(btn){document.querySelectorAll("#route-tabs .ftab").forEach(b=>b.classList.remove("active"));btn.classList.add("active");}
+  const dayOrders=ORDERS.filter(o=>o.deliveryDate===ds&&o.deliveryType==="delivery");
+  const d=new Date(ds+"T12:00:00");
+  const origin="Le+Carousel+Patisserie+345+Taylor+St+San+Francisco+CA";
+  const stops=dayOrders.map(o=>encodeURIComponent(o.clientAddress));
+  const mapsUrl=stops.length?`https://www.google.com/maps/dir/${origin}/${stops.join("/")}`:null;
+  const container=document.getElementById("route-day-content");
+  if(!dayOrders.length){container.innerHTML=`<div class="card" style="padding:20px;text-align:center"><p style="color:var(--brown-lt);font-style:italic">No deliveries on ${fmtDate(d)}.</p></div>`;return;}
+  container.innerHTML=`
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      ${mapsUrl?`<button class="btn btn-primary btn-sm" onclick="window.open('${mapsUrl}','_blank')">🗺 Open in Google Maps</button>`:""}
+      <button class="btn btn-ghost btn-sm" onclick="copyToClipboard('${mapsUrl||""}')">📋 Copy route link</button>
+    </div>
+    ${dayOrders.map((o,i)=>`
+      <div class="driver-stop">
+        <div class="stop-header">
+          <div class="stop-num">${i+1}</div>
+          <div style="flex:1">
+            <div style="font-weight:700;font-size:14px;color:var(--dark)">${o.clientName}</div>
+            <div style="font-size:12px;color:var(--brown-lt);margin-top:2px">📍 ${o.clientAddress}</div>
+            ${o.deliveryWindow?`<div style="font-size:11px;color:var(--blue);margin-top:3px;font-weight:500">⏰ ${o.deliveryWindow}</div>`:""}
+            <div style="font-size:12px;color:var(--brown-mid);margin-top:4px">${o.items.map(it=>`${it.qty}× ${it.name}`).join(", ")}</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="printPO('${o.id}')">🖨 PO</button>
+        </div>
+      </div>`).join("")}`;
+}
+function renderClientsPanel(){
+  document.getElementById("clients-content").innerHTML=`
+    <div class="sec-header"><h2 class="sec-title">Wholesale Clients</h2><button class="btn btn-primary btn-sm" onclick="document.getElementById('invite-modal').classList.add('open')">+ Invite Client</button></div>
+    <div style="background:var(--gold-pale);border:1px solid var(--gold-lt);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--brown-mid);margin-bottom:16px">🔒 New clients can only join via an invitation link. They cannot self-register.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+      ${USERS.filter(u=>u.role==="client").map(c=>`<div class="card" style="padding:14px">
+        <div style="font-weight:700;font-size:14px;margin-bottom:3px">${c.company}</div>
+        <div style="font-size:12px;color:var(--brown-lt);margin-bottom:8px">${c.email}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+          <span class="badge ${c.deliveryType==="delivery"?"badge-sage":"badge-gold"}">${c.deliveryType}</span>
+          ${c.deliveryWindow?`<span class="badge badge-blue" style="font-size:10px">⏰ ${c.deliveryWindow}</span>`:""}
+        </div>
+        <div style="font-size:11px;font-weight:600;color:var(--brown-mid);margin-bottom:8px">📅 ${c.deliveryDays.map(d=>DAY_NAMES[d]).join(" · ")}</div>
+        <div style="font-size:12px;color:var(--brown-lt);margin-bottom:10px">📦 ${ORDERS.filter(o=>o.clientId===c.id).length} total orders</div>
+        <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center">Edit</button><button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" onclick="showToast('Invite link copied for ${c.company} ✓')">📋 Invite</button></div>
+      </div>`).join("")}
+    </div>`;
+}
+function renderTeamPanel(){
+  document.getElementById("team-content").innerHTML=`
+    <div class="sec-header"><h2 class="sec-title">Team Accounts</h2><button class="btn btn-primary btn-sm" onclick="showAddTeamMember()">+ Add member</button></div>
+    <div id="add-team-form" style="display:none;margin-bottom:18px">
+      <div class="card" style="padding:16px;max-width:440px">
+        <h3 style="font-size:15px;font-weight:700;color:var(--brown);margin-bottom:14px">New Team Member</h3>
+        <div class="form-field"><label class="form-label">Name</label><input class="form-input" id="tm-name" type="text" placeholder="Marie"></div>
+        <div class="form-field"><label class="form-label">Email</label><input class="form-input" id="tm-email" type="email" placeholder="marie@carousel.com"></div>
+        <div class="form-field"><label class="form-label">Password</label><input class="form-input" id="tm-pass" type="text" placeholder="Temporary password"></div>
+        <div class="form-field"><label class="form-label">Role</label>
+          <select class="form-input" id="tm-role">
+            <option value="kitchen">Cuisine (BOF)</option>
+            <option value="driver">Driver</option>
+            <option value="sales">Sales Rep</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn btn-primary btn-sm" onclick="addTeamMember()">Create Account</button>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('add-team-form').style.display='none'">Cancel</button>
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px" id="team-grid">
+      ${USERS.filter(u=>u.role!=="client").map(u=>`<div class="card" style="padding:14px">
+        <div style="font-weight:700;font-size:14px;margin-bottom:3px">${u.name}</div>
+        <div style="font-size:12px;color:var(--brown-lt);margin-bottom:8px">${u.email}</div>
+        <div style="margin-bottom:8px"><span class="badge ${u.role==="admin"?"badge-gold":u.role==="kitchen"?"badge-brown":u.role==="driver"?"badge-blue":"badge-purple"}">${u.role==="kitchen"?"Cuisine (BOF)":u.role}</span></div>
+        ${u.id!=="admin"?`<button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;color:var(--red);border-color:var(--red-pale)" onclick="removeTeamMember('${u.id}')">Remove</button>`:""}
+      </div>`).join("")}
+    </div>`;
+}
+function showAddTeamMember(){
+  const form=document.getElementById("add-team-form");
+  if(form) form.style.display=form.style.display==="none"?"block":"none";
+}
+function addTeamMember(){
+  const name=document.getElementById("tm-name").value.trim();
+  const email=document.getElementById("tm-email").value.trim().toLowerCase();
+  const pass=document.getElementById("tm-pass").value.trim();
+  const role=document.getElementById("tm-role").value;
+  if(!name||!email||!pass){showToast("Fill in all fields.");return;}
+  if(USERS.find(u=>u.email===email)){showToast("Email already exists.");return;}
+  const id="team-"+Date.now();
+  USERS.push({id,name,role,email,pass,label:name});
+  showToast("Account created for "+name+" ✓");
+  document.getElementById("tm-name").value="";
+  document.getElementById("tm-email").value="";
+  document.getElementById("tm-pass").value="";
+  document.getElementById("add-team-form").style.display="none";
+  renderTeamPanel();
+}
+function removeTeamMember(id){
+  const idx=USERS.findIndex(u=>u.id===id);
+  if(idx>=0){const name=USERS[idx].name;USERS.splice(idx,1);renderTeamPanel();showToast(name+" removed from team");}
+}
+function renderAdminMessages(){
+  document.getElementById("messages-content").innerHTML=`
+    <h2 class="sec-title" style="margin-bottom:16px">Client Messages</h2>
+    <div class="chat-container" style="max-height:420px">
+      <div class="chat-messages" id="admin-chat-messages"></div>
+      <div class="chat-input-area">
+        <input class="chat-input" id="admin-chat-input" placeholder="Reply to clients…" onkeydown="if(event.key==='Enter')sendAdminMsg()">
+        <button class="btn btn-primary btn-sm" onclick="sendAdminMsg()">Send</button>
+      </div>
+    </div>`;
+  const el=document.getElementById("admin-chat-messages");
+  el.innerHTML=MESSAGES.map(m=>`
+    <div>
+      <div class="chat-msg ${m.role==="admin"?"client":"admin"}">${m.text}</div>
+      <div class="chat-msg-meta" style="${m.role==="admin"?"text-align:right":""}">${m.fromName} · ${new Date(m.ts).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}</div>
+    </div>`).join("")||`<p style="color:var(--brown-lt);font-size:13px;font-style:italic;text-align:center;padding:20px">No messages.</p>`;
+  el.scrollTop=el.scrollHeight;
+}
+function sendAdminMsg(){
+  const input=document.getElementById("admin-chat-input"),text=input.value.trim();
+  if(!text) return;
+  MESSAGES.push({from:"admin",fromName:"Le Carousel Patisserie",text,ts:new Date().toISOString(),role:"admin"});
+  input.value="";renderAdminMessages();showToast("Message sent ✓");
+}
+
+// ════════ INVITE ════════
+function generateInviteLink(){
+  const company=document.getElementById("inv-company").value.trim(),name=document.getElementById("inv-name").value.trim(),email=document.getElementById("inv-email").value.trim();
+  if(!company||!email){showToast("Fill in company name and email.");return;}
+  const token=btoa(JSON.stringify({company,name,email,window:document.getElementById("inv-window").value,dtype:document.getElementById("inv-dtype").value,issued:Date.now()}));
+  const link=`${window.location.origin}${window.location.pathname}?invite=${token}`;
+  document.getElementById("invite-link-result").style.display="block";
+  document.getElementById("invite-link-text").textContent=link;
+  showToast("Invite link generated ✓");
+}
+function copyInviteLink(){copyToClipboard(document.getElementById("invite-link-text").textContent);}
+
+// ════════ PRINT PO ════════
+function printPO(orderId){
+  const o=ORDERS.find(x=>x.id===orderId);if(!o) return;
+  const delivDate=new Date(o.deliveryDate+"T12:00:00"),placedDate=new Date(o.placedAt);
+  const allItems=CATALOG.flatMap(s=>s.items);
+  const itemsByCat={};
+  o.items.forEach(line=>{
+    const cat=CATALOG.find(s=>s.items.some(i=>i.sku===line.sku))?.cat||"Other";
+    if(!itemsByCat[cat]) itemsByCat[cat]=[];
+    itemsByCat[cat].push(line);
+  });
+  const rows=Object.entries(itemsByCat).map(([cat,lines])=>`<tr class="cat-r"><td colspan="5">${cat}</td></tr>${lines.map(l=>`<tr><td>${l.sku}</td><td>${l.name}</td><td>${l.qty}</td><td>$${l.price.toFixed(2)}</td><td>$${(l.price*l.qty).toFixed(2)}</td></tr>`).join("")}`).join("");
+  const statusColors={pending:"#9A6D00",confirmed:"#5A8A5E",delivered:"#3B6D11",invoiced:"#185FA5"};
+  document.getElementById("po-document").innerHTML=`
+    <div class="po-hdr">
+      <div class="po-brand"><h1>Le Carousel Patisserie</h1><p>Wholesale · San Francisco, CA · wholesale@carousel-patisserie.com</p></div>
+      <div class="po-meta-r"><div class="po-lbl">Purchase Order</div><div class="po-num">${o.id}</div><div style="font-size:12px;color:#6B4C3B;margin-top:4px">Issued: ${placedDate.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</div><div style="margin-top:8px;font-size:12px;font-weight:700;color:${statusColors[o.status]||"#9A6D00"}">${({pending:"Pending",confirmed:"Confirmed",delivered:"Delivered",invoiced:"Invoiced"})[o.status]||o.status}</div></div>
+    </div>
+    <div class="po-addrs">
+      <div class="po-addr"><h3>Vendor</h3><p><strong>Le Carousel Patisserie</strong><br>345 Taylor St, San Francisco, CA<br>wholesale@carousel-patisserie.com</p></div>
+      <div class="po-addr"><h3>Bill To / Ship To</h3><p><strong>${o.clientName}</strong><br>${o.clientAddress||"—"}<br>${o.deliveryType==="delivery"?"Delivery":"Pickup"}${o.deliveryWindow?" · ⏰ "+o.deliveryWindow:""}</p></div>
+    </div>
+    <div class="po-info">
+      <div class="po-info-c"><div class="lbl">PO Number</div><div class="val">${o.id}</div></div>
+      <div class="po-info-c"><div class="lbl">Delivery date</div><div class="val">${fmtDateLong(delivDate)}</div></div>
+      <div class="po-info-c"><div class="lbl">Type</div><div class="val" style="text-transform:capitalize">${o.type}${o.recurringDays?.length?" ("+o.recurringDays.map(d=>DAY_NAMES[d]).join(", ")+")":""}</div></div>
+      <div class="po-info-c"><div class="lbl">Payment terms</div><div class="val">Net 15</div></div>
+    </div>
+    <table class="po-tbl"><thead><tr><th>SKU</th><th>Item</th><th>Qty</th><th>Unit price</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="po-totals"><div class="po-totals-box">
+      <div class="po-tr"><span class="lbl">Subtotal</span><span class="val">$${o.subtotal.toFixed(2)}</span></div>
+      ${o.deliveryFee>0?`<div class="po-tr"><span class="lbl">Delivery fee</span><span class="val">$${o.deliveryFee.toFixed(2)}</span></div>`:""}
+      <div class="po-tr"><span class="lbl">Tax</span><span class="val">Exempt</span></div>
+      <div class="po-tr grand"><span class="lbl">Total due</span><span class="val">$${o.total.toFixed(2)}</span></div>
+    </div></div>
+    ${o.notes?`<div style="background:#FDF9F4;border:1px solid #E0D8D0;border-radius:8px;padding:12px 14px;margin-bottom:20px;font-size:13px;color:#6B4C3B"><strong>Notes:</strong> ${o.notes}</div>`:""}
+    <div class="po-ftr">
+      <div><h4>Ordering policy</h4><p>48h minimum notice · 11:00 AM cutoff · $45 MOQ · $6 delivery. Cancellations within 2 days are charged in full.</p></div>
+      <div><h4>Payment</h4><p>Invoiced 1st & 15th of each month · Net 15 · CC or ACH. 5% late penalty.</p></div>
+    </div>`;
+  document.getElementById("po-print-area").classList.add("open");
+}
+function closePO(){document.getElementById("po-print-area").classList.remove("open");}
+function sendToQBO(){showToast("↗ Sending to QuickBooks Online… (OAuth required in production)");}
+
+// ════════ HELPERS ════════
+function getWeekOrders(offset){
+  const now=new Date(),monday=new Date(now);
+  monday.setDate(now.getDate()-now.getDay()+1+(offset*7));monday.setHours(0,0,0,0);
+  const sunday=new Date(monday);sunday.setDate(monday.getDate()+6);
+  return ORDERS.filter(o=>{const d=new Date(o.deliveryDate+"T12:00:00");return d>=monday&&d<=sunday;});
+}
+function getWeekLabel(offset){
+  const now=new Date(),monday=new Date(now);
+  monday.setDate(now.getDate()-now.getDay()+1+(offset*7));
+  const sunday=new Date(monday);sunday.setDate(monday.getDate()+6);
+  return monday.toLocaleDateString("en-US",{month:"short",day:"numeric"})+" – "+sunday.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+}
+function changeWeek(d){currentWeekOffset+=d;}
+function fmtDate(d){return d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});}
+function fmtDateLong(d){return d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});}
+function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),3000);}
+function copyToClipboard(text){
+  if(navigator.clipboard) navigator.clipboard.writeText(text).then(()=>showToast("Copied to clipboard ✓"));
+  else{const ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);showToast("Copied ✓");}
+}
+function setBActive(btn,navId){
+  const nav=document.getElementById(navId);
+  if(nav) nav.querySelectorAll(".bnav-item").forEach(b=>b.classList.remove("active"));
+  if(btn) btn.classList.add("active");
+}
+
+// ════════ CUTOFF BANNER ════════
+function showCutoffBanner(){
+  const now=new Date();
+  const day=now.getDay();
+  const hour=now.getHours();
+  const msgs=[];
+  const closed="(closed Monday)";
+  if(day===5) msgs.push("<strong>Heads up:</strong> Tuesday orders must be placed by <strong>Saturday 11 AM</strong> "+closed);
+  if(day===6 && hour<11) msgs.push("<strong>Last chance for Tuesday!</strong> Cutoff is <strong>today at 11 AM</strong> "+closed);
+  if(day===6 && hour>=11) msgs.push("<strong>Tuesday cutoff passed.</strong> Next: Wednesday &mdash; order by <strong>Sunday 11 AM</strong>");
+  if(day===6) msgs.push("<strong>Wednesday orders:</strong> cutoff is <strong>Sunday 11 AM</strong> &mdash; not Monday "+closed);
+  if(day===0 && hour<11) msgs.push("<strong>Last chance for Wednesday!</strong> Cutoff is <strong>today Sunday at 11 AM</strong>");
+  if(day===0 && hour>=11) msgs.push("<strong>Wednesday cutoff passed.</strong> Next: Thursday &mdash; order by <strong>Tuesday 11 AM</strong>");
+  const banner=document.getElementById("cutoff-banner");
+  if(banner && msgs.length){
+    document.getElementById("cutoff-banner-text").innerHTML=msgs.join(" &nbsp;&middot;&nbsp; ");
+    banner.style.display="flex";
+  }
+}
+
+// ════════ INIT ════════
+document.addEventListener("DOMContentLoaded", function(){
+  // Check invite token in URL
+  try{
+    const token=new URLSearchParams(window.location.search).get("invite");
+    if(token){const data=JSON.parse(atob(token));if(data.email) document.getElementById("login-email").value=data.email;}
+  }catch(e){}
+  // Restore persistent session
+  try{
+    const saved=localStorage.getItem("carousel_session");
+    if(saved){
+      const {id,ts}=JSON.parse(saved);
+      const age=(Date.now()-ts)/(1000*60*60*24);
+      if(age<30){
+        const user=USERS.find(u=>u.id===id);
+        if(user){currentUser=user;launchUser(user);}
+        else localStorage.removeItem("carousel_session");
+      } else {
+        localStorage.removeItem("carousel_session");
+      }
+    }
+  }catch(e){}
+});
+</script>
+</body>
+</html>
