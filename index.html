@@ -629,6 +629,99 @@ async function dbSaveMessage(msg){
     if(error) throw error;
   }catch(e){ console.warn('DB save message failed:',e); }
 }
+
+// ════════════════════════════════
+// EMAIL HELPERS
+// ════════════════════════════════
+async function sendEmail(to, subject, html){
+  try{
+    await fetch('/api/send-email', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({to, subject, html})
+    });
+  }catch(e){ console.warn('Email send failed:',e); }
+}
+
+function emailOrderConfirmation(order){
+  const client=USERS.find(u=>u.id===order.clientId);
+  const clientEmail=client?.email||'';
+  const adminEmail='wholesale@carousel-patisserie.com';
+  const delivDate=new Date(order.deliveryDate+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+  const itemsHtml=order.items.map(i=>`
+    <tr>
+      <td style="padding:8px 12px;border-bottom:1px solid #EDE8E2">${i.name}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #EDE8E2;text-align:center">${i.qty}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #EDE8E2;text-align:right">$${(i.price*i.qty).toFixed(2)}</td>
+    </tr>`).join('');
+
+  const clientHtml=`
+    <div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;background:#FAF7F2;padding:32px">
+      <div style="text-align:center;margin-bottom:24px">
+        <h1 style="font-size:24px;color:#3D2B1F;margin:0">Le Carousel Patisserie</h1>
+        <p style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#A07860;margin:4px 0 0">Wholesale · San Francisco</p>
+      </div>
+      <div style="background:white;border-radius:12px;padding:24px;border:1px solid rgba(61,43,31,0.12)">
+        <h2 style="font-size:18px;color:#3D2B1F;margin:0 0 4px">Order Confirmed ✓</h2>
+        <p style="font-size:13px;color:#A07860;margin:0 0 20px">Order ${order.id}</p>
+        <div style="background:#F5EDDA;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#6B4C3B">
+          📅 <strong>${delivDate}</strong> &nbsp;·&nbsp; ${order.deliveryType==='delivery'?'🚚 Delivery':'🏪 Pickup'}${order.deliveryWindow?' &nbsp;·&nbsp; ⏰ '+order.deliveryWindow:''}
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+          <thead>
+            <tr style="background:#F5F0E8">
+              <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#A07860">Item</th>
+              <th style="padding:8px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#A07860">Qty</th>
+              <th style="padding:8px 12px;text-align:right;font-size:11px;text-transform:uppercase;color:#A07860">Total</th>
+            </tr>
+          </thead>
+          <tbody>${itemsHtml}</tbody>
+        </table>
+        <div style="text-align:right;padding:8px 0;border-top:2px solid #3D2B1F">
+          <span style="font-size:15px;font-weight:700;color:#3D2B1F">Total: $${order.total.toFixed(2)}</span>
+        </div>
+        ${order.notes?`<div style="margin-top:16px;font-size:12px;color:#6B4C3B;font-style:italic">Note: ${order.notes}</div>`:''}
+      </div>
+      <p style="font-size:12px;color:#A07860;text-align:center;margin-top:20px">
+        Questions? Contact us at <a href="mailto:wholesale@carousel-patisserie.com" style="color:#C2912E">wholesale@carousel-patisserie.com</a>
+      </p>
+      <p style="font-size:11px;color:#A07860;text-align:center;margin:4px 0 0">Net 15 · $45 MOQ · $6 delivery fee</p>
+    </div>`;
+
+  const adminHtml=`
+    <div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;background:#FAF7F2;padding:32px">
+      <div style="background:white;border-radius:12px;padding:24px;border:1px solid rgba(61,43,31,0.12)">
+        <h2 style="font-size:18px;color:#3D2B1F;margin:0 0 4px">🛒 New Order — ${order.clientName}</h2>
+        <p style="font-size:13px;color:#A07860;margin:0 0 20px">${order.id} · Placed ${new Date(order.placedAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</p>
+        <div style="background:#F5EDDA;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#6B4C3B">
+          📅 <strong>${delivDate}</strong> &nbsp;·&nbsp; ${order.deliveryType==='delivery'?'🚚 Delivery':'🏪 Pickup'}${order.deliveryWindow?' &nbsp;·&nbsp; ⏰ '+order.deliveryWindow:''}
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+          <thead>
+            <tr style="background:#F5F0E8">
+              <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#A07860">Item</th>
+              <th style="padding:8px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#A07860">Qty</th>
+              <th style="padding:8px 12px;text-align:right;font-size:11px;text-transform:uppercase;color:#A07860">Total</th>
+            </tr>
+          </thead>
+          <tbody>${itemsHtml}</tbody>
+        </table>
+        <div style="text-align:right;padding:8px 0;border-top:2px solid #3D2B1F">
+          <span style="font-size:15px;font-weight:700;color:#3D2B1F">Total: $${order.total.toFixed(2)}</span>
+        </div>
+        ${order.notes?`<div style="margin-top:12px;font-size:12px;color:#6B4C3B;font-style:italic">Note: ${order.notes}</div>`:''}
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid #EDE8E2;font-size:12px;color:#6B4C3B">
+          Client: ${order.clientName} &nbsp;·&nbsp; ${clientEmail}
+        </div>
+      </div>
+    </div>`;
+
+  // Send to client
+  if(clientEmail) sendEmail(clientEmail, `Order confirmed — ${delivDate} · Le Carousel Patisserie`, clientHtml);
+  // Send to admin
+  sendEmail(adminEmail, `New order: ${order.clientName} — ${delivDate}`, adminHtml);
+}
+
 </script>
 <script>
 // ════════════════════════════════
@@ -870,6 +963,7 @@ function submitOrder(){
     placedAt:new Date().toISOString(),notes:document.getElementById("order-notes").value};
   ORDERS.push(order);
   dbSaveOrder(order);
+  emailOrderConfirmation(order);
   const dLabel=new Date(selDelivDate+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
   const typeLabel=orderType==="standing"?`Recurring (${recurringDays.map(d=>DAY_NAMES[d]).join(", ")})`:"One-time";
   document.getElementById("modal-details").innerHTML=`<div class="divider"></div>${[["Order #",id],["Delivery",dLabel],["Type",typeLabel],["Total","$"+order.total.toFixed(2)]].map(([k,v])=>`<div class="modal-detail-row"><span style="color:var(--brown-lt)">${k}</span><span style="font-weight:700;color:var(--brown)">${v}</span></div>`).join("")}`;
@@ -1126,7 +1220,7 @@ function submitSalesOrder(){
   const subtotal=lines.reduce((s,l)=>s+l.price*l.qty,0),fee=client.deliveryType==="delivery"?6:0;
   const id="PO-2026-S"+String(Date.now()).slice(-3);
   const salesOrder={id,clientId,clientName:client.company,clientAddress:client.address||"",deliveryDate:delivDate,deliveryType:client.deliveryType,deliveryWindow:client.deliveryWindow||"",items:lines,subtotal,deliveryFee:fee,total:subtotal+fee,status:"confirmed",type,recurringDays:[],placedAt:new Date().toISOString(),notes:document.getElementById("sales-order-notes").value};
-  ORDERS.push(salesOrder);dbSaveOrder(salesOrder);
+  ORDERS.push(salesOrder);dbSaveOrder(salesOrder);emailOrderConfirmation(salesOrder);
   Object.keys(salesCart).forEach(k=>delete salesCart[k]);
   document.querySelectorAll("[id^='sqty-']").forEach(el=>el.textContent="0");
   showToast("Order created for "+client.company+" ✓");
