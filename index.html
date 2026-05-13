@@ -581,20 +581,21 @@ const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 async function dbLoadOrders(){
   try{
     const {data,error} = await supa.from('orders').select('*').order('placed_at',{ascending:false});
-    if(error) throw error;
+    if(error){ console.warn('DB load orders failed:',JSON.stringify(error));return; }
     if(data && data.length > 0){
       ORDERS = data.map(r=>({
         id:r.id, clientId:r.client_id, clientName:r.client_name,
-        clientAddress:r.client_address, deliveryDate:r.delivery_date,
-        deliveryType:r.delivery_type, deliveryWindow:r.delivery_window||'',
-        items:r.items||[], subtotal:parseFloat(r.subtotal)||0,
+        clientAddress:r.client_address||'', deliveryDate:r.delivery_date,
+        deliveryType:r.delivery_type||'delivery', deliveryWindow:r.delivery_window||'',
+        items:Array.isArray(r.items)?r.items:[], subtotal:parseFloat(r.subtotal)||0,
         deliveryFee:parseFloat(r.delivery_fee)||0, total:parseFloat(r.total)||0,
         status:r.status||'pending', type:r.type||'one-time',
-        recurringDays:r.recurring_days||[], placedAt:r.placed_at,
+        recurringDays:Array.isArray(r.recurring_days)?r.recurring_days:[],
+        placedAt:r.placed_at||new Date().toISOString(),
         notes:r.notes||''
       }));
     }
-  }catch(e){ console.warn('DB load orders failed:',e); }
+  }catch(e){ console.warn('DB load orders failed:',e.message||JSON.stringify(e)); }
 }
 
 async function dbSaveOrder(order){
@@ -622,24 +623,27 @@ async function dbUpdateOrderStatus(id, status){
 async function dbLoadMessages(){
   try{
     const {data,error} = await supa.from('messages').select('*').order('ts',{ascending:true});
-    if(error) throw error;
+    if(error){ console.warn('DB load messages failed:',JSON.stringify(error));return; }
     if(data && data.length > 0){
       MESSAGES = data.map(r=>({
-        from:r.from_id, fromName:r.from_name,
-        text:r.text, ts:r.ts, role:r.role
+        from:r.from_id, fromName:r.from_name||'',
+        text:r.text||'', ts:r.ts||new Date().toISOString(),
+        role:r.role||'client', read:false,
+        toClientId:r.to_client_id||null
       }));
     }
-  }catch(e){ console.warn('DB load messages failed:',e); }
+  }catch(e){ console.warn('DB load messages failed:',e.message||JSON.stringify(e)); }
 }
 
 async function dbSaveMessage(msg){
   try{
     const {error} = await supa.from('messages').insert({
       from_id:msg.from, from_name:msg.fromName,
-      text:msg.text, ts:msg.ts, role:msg.role
+      text:msg.text, ts:msg.ts, role:msg.role,
+      to_client_id:msg.toClientId||null
     });
-    if(error) throw error;
-  }catch(e){ console.warn('DB save message failed:',e); }
+    if(error){ console.warn('DB save message failed:',JSON.stringify(error));return; }
+  }catch(e){ console.warn('DB save message failed:',e.message||JSON.stringify(e)); }
 }
 
 // ════════════════════════════════
@@ -1666,6 +1670,26 @@ function sendAdminMsg(){
   input.value="";
   renderAdminConversation(activeInboxClient);
   showToast("Message sent to "+client?.company+" ✓");
+  if(client?.email){
+    sendEmail(
+      client.email,
+      "Message from Le Carousel Patisserie",
+      `<div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;background:#FAF7F2;padding:32px">
+        <div style="text-align:center;margin-bottom:20px">
+          <h1 style="font-size:22px;color:#3D2B1F;margin:0">Le Carousel Patisserie</h1>
+          <p style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A07860;margin:4px 0 0">Wholesale · San Francisco</p>
+        </div>
+        <div style="background:white;border-radius:12px;padding:24px;border:1px solid rgba(61,43,31,0.12)">
+          <h2 style="font-size:16px;color:#3D2B1F;margin:0 0 16px">You have a new message</h2>
+          <div style="background:#F5F0E8;border-radius:8px;padding:14px 16px;font-size:14px;color:#3D2B1F;line-height:1.6">${text}</div>
+          <div style="margin-top:20px;text-align:center">
+            <a href="https://carousel-wholesale.vercel.app" style="background:#3D2B1F;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">View & Reply</a>
+          </div>
+        </div>
+        <p style="font-size:11px;color:#A07860;text-align:center;margin-top:16px">Le Carousel Patisserie · wholesale@carousel-patisserie.com</p>
+      </div>`
+    );
+  }
 }
 
 // ════════ INVITE ════════
@@ -1799,11 +1823,27 @@ function sendKitchenReply(clientId){
   if(!currentUser.canMessage) return;
   const input=document.getElementById("kitchen-reply-input");
   const text=input.value.trim(); if(!text) return;
+  const kClient=USERS.find(u=>u.id===clientId);
   const msg={from:"admin",fromName:currentUser.name+" (Le Carousel Patisserie)",text,ts:new Date().toISOString(),role:"admin",toClientId:clientId};
   MESSAGES.push(msg);dbSaveMessage(msg);
   input.value="";
   showKitchenConversation(clientId);
   showToast("Message envoyé ✓");
+  if(kClient?.email){
+    sendEmail(
+      kClient.email,
+      "Message from Le Carousel Patisserie",
+      `<div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;background:#FAF7F2;padding:32px">
+        <div style="background:white;border-radius:12px;padding:24px;border:1px solid rgba(61,43,31,0.12)">
+          <h1 style="font-size:20px;color:#3D2B1F;margin:0 0 16px">Le Carousel Patisserie</h1>
+          <div style="background:#F5F0E8;border-radius:8px;padding:14px 16px;font-size:14px;color:#3D2B1F">${text}</div>
+          <div style="margin-top:16px;text-align:center">
+            <a href="https://carousel-wholesale.vercel.app" style="background:#3D2B1F;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">View & Reply</a>
+          </div>
+        </div>
+      </div>`
+    );
+  }
 }
 function fmtDate(d){return d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});}
 function fmtDateLong(d){return d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});}
