@@ -256,6 +256,21 @@ button{cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
 .stay-signed-in input{accent-color:var(--gold);width:14px;height:14px}
 
 
+
+/* DELIVERY SLIP */
+.slip-overlay{position:fixed;inset:0;background:rgba(26,22,18,.6);display:none;align-items:center;justify-content:center;z-index:400;padding:16px}
+.slip-overlay.open{display:flex}
+.slip-modal{background:white;border-radius:var(--radius-lg);padding:28px;width:420px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.slip-count-btns{display:flex;gap:8px;margin:14px 0}
+.slip-count-btn{flex:1;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:white;font-size:14px;font-weight:600;color:var(--brown-mid);cursor:pointer;transition:all .15s}
+.slip-count-btn.active{border-color:var(--gold);background:var(--gold-pale);color:var(--brown)}
+@media print{
+  .slip-print-area{display:block!important}
+  body>*:not(.slip-print-area){display:none!important}
+  .slip-print-area{position:fixed;inset:0;padding:16px;background:white}
+}
+.slip-print-area{display:none}
+
 /* MESSAGE BADGES */
 .msg-badge{display:none;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:4px;vertical-align:middle}
 .msg-badge.show{display:inline-block}
@@ -509,6 +524,8 @@ button{cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
       <div class="anav-section">Setup</div>
       <div class="anav-item" onclick="adminTab('clients',this)">Clients</div>
       <div class="anav-item" onclick="adminTab('team',this)">Team</div>
+      <div class="anav-section">Integrations</div>
+      <div class="anav-item" onclick="window.open('/api/qbo-auth','_blank')">↗ Connect QBO</div>
       <div class="anav-item" onclick="adminTab('messages',this)">Messages <span class="msg-badge" id="nav-msg-badge"></span></div>
     </div>
     <div class="admin-content">
@@ -594,6 +611,32 @@ button{cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
     <div id="bc-status" style="display:none;margin-top:12px;background:var(--sage-pale);color:var(--sage);padding:10px 12px;border-radius:8px;font-size:13px;font-weight:500"></div>
   </div>
 </div>
+
+
+<!-- DELIVERY SLIP MODAL -->
+<div class="slip-overlay" id="slip-modal">
+  <div class="slip-modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <h2 style="font-size:18px;font-weight:700;color:var(--brown)">🖨 Print Delivery Slip</h2>
+      <button onclick="document.getElementById('slip-modal').classList.remove('open')" style="background:none;border:none;font-size:22px;color:var(--brown-lt);cursor:pointer">×</button>
+    </div>
+    <p style="font-size:13px;color:var(--brown-lt);margin-bottom:4px">How many copies?</p>
+    <div class="slip-count-btns">
+      <button class="slip-count-btn active" onclick="setSlipCount(1,this)">1 copy</button>
+      <button class="slip-count-btn" onclick="setSlipCount(2,this)">2 copies</button>
+      <button class="slip-count-btn" onclick="setSlipCount(4,this)">4 copies</button>
+      <button class="slip-count-btn" onclick="setSlipCount('all',this)">All orders</button>
+    </div>
+    <div id="slip-preview" style="background:var(--cream);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--brown-mid);margin-bottom:16px;min-height:40px"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="printSlips()">🖨 Print</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('slip-modal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- SLIP PRINT AREA (hidden, only shown on print) -->
+<div class="slip-print-area" id="slip-print-area"></div>
 
 <div class="toast" id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1234,7 +1277,8 @@ function renderSalesOrders(){
       <td><strong>$${o.total.toFixed(2)}</strong></td>
       <td><span class="badge badge-brown">${o.type}</span></td>
       <td><span class="status-chip status-${o.status}">${o.status}</span></td>
-      <td><button class="btn btn-ghost btn-sm" onclick="printPO('${o.id}')">🖨 PO</button></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="printPO('${o.id}')">🖨 PO</button>
+              <button class="btn btn-ghost btn-sm" onclick="showSlipModal('${o.id}')">📋 Slip</button></td>
     </tr>`).join("")}</tbody>
   </table></div>`;
 }
@@ -1786,7 +1830,33 @@ function printPO(orderId){
   document.getElementById("po-print-area").classList.add("open");
 }
 function closePO(){document.getElementById("po-print-area").classList.remove("open");}
-function sendToQBO(){showToast("↗ Sending to QuickBooks Online… (OAuth required in production)");}
+async function sendToQBO(){
+  const btn=event.target;
+  const origText=btn.textContent;
+  btn.textContent="Sending…";btn.disabled=true;
+  const poNum=document.getElementById("po-document")?.querySelector(".po-num")?.textContent;
+  const order=ORDERS.find(o=>o.id===poNum);
+  if(!order){showToast("Order not found.");btn.textContent=origText;btn.disabled=false;return;}
+  try{
+    const response=await fetch('/api/qbo-create-po',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({order})
+    });
+    const data=await response.json();
+    if(response.ok){
+      showToast("✓ Purchase Order created in QuickBooks!");
+      btn.textContent="✓ Sent to QBO";
+      btn.style.background="var(--sage)";
+    } else {
+      showToast("QBO error: "+(data.Fault?.Error?.[0]?.Message||"Unknown error"));
+      btn.textContent=origText;btn.disabled=false;
+    }
+  }catch(e){
+    showToast("Connection error — try again");
+    btn.textContent=origText;btn.disabled=false;
+  }
+}
 
 
 // ════════════════════════════════
