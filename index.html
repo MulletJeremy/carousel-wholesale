@@ -565,6 +565,36 @@ button{cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
   </div>
 </div>
 
+
+<!-- BROADCAST MODAL -->
+<div class="modal-wrap" id="broadcast-modal">
+  <div class="modal-card" style="width:500px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:700;color:var(--brown)">📢 Broadcast Message</h2>
+      <button onclick="closeModal('broadcast-modal')" style="background:none;border:none;font-size:22px;color:var(--brown-lt);cursor:pointer">×</button>
+    </div>
+    <p style="font-size:13px;color:var(--brown-lt);margin-bottom:16px">Envoie un message à plusieurs clients en même temps — ils le reçoivent dans leur messagerie et par email.</p>
+
+    <label class="form-label" style="margin-bottom:8px;display:block">Destinataires</label>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="ftab active" id="bc-all-btn" onclick="selectBroadcastAll()">Tous les clients</button>
+      <button class="ftab" id="bc-select-btn" onclick="selectBroadcastCustom()">Sélectionner</button>
+    </div>
+    <div id="bc-client-select" style="display:none;background:var(--cream);border-radius:8px;padding:10px;margin-bottom:12px;border:1px solid var(--border)">
+      <div id="bc-client-list"></div>
+    </div>
+
+    <label class="form-label" style="margin-bottom:6px;display:block">Message</label>
+    <textarea class="notes-area" id="bc-message" placeholder="Ex: À partir du 12 mars, nous ajoutons le Pain aux Raisins à notre catalogue…" style="min-height:100px;margin-top:0"></textarea>
+
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-gold" style="flex:1;justify-content:center" onclick="sendBroadcast()">📢 Envoyer</button>
+      <button class="btn btn-ghost" onclick="closeModal('broadcast-modal')">Annuler</button>
+    </div>
+    <div id="bc-status" style="display:none;margin-top:12px;background:var(--sage-pale);color:var(--sage);padding:10px 12px;border-radius:8px;font-size:13px;font-weight:500"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1032,7 +1062,10 @@ function renderClientHistory(){
 }
 function renderClientMessages(){
   const container=document.getElementById("client-chat-messages");
-  const msgs=MESSAGES.filter(m=>m.from===currentUser.id||m.role==="admin");
+  const msgs=MESSAGES.filter(m=>
+    m.from===currentUser.id ||
+    (m.role==="admin" && m.toClientId===currentUser.id)
+  );
   container.innerHTML=msgs.length?msgs.map(m=>`
     <div>
       <div class="chat-msg ${m.role==="client"?"client":"admin"}">${m.text}</div>
@@ -1598,6 +1631,7 @@ function renderAdminInbox(){
   container.innerHTML=`
     <div class="sec-header">
       <h2 class="sec-title">Messages <span class="msg-badge" id="inbox-badge"></span></h2>
+      <button class="btn btn-gold btn-sm" onclick="showBroadcastModal()">📢 Broadcast</button>
     </div>
     <div id="inbox-list">
       ${clients.map(c=>{
@@ -1748,6 +1782,114 @@ function printPO(orderId){
 }
 function closePO(){document.getElementById("po-print-area").classList.remove("open");}
 function sendToQBO(){showToast("↗ Sending to QuickBooks Online… (OAuth required in production)");}
+
+
+// ════════════════════════════════
+// BROADCAST
+// ════════════════════════════════
+let broadcastMode = "all";
+let broadcastSelected = [];
+
+function showBroadcastModal(){
+  broadcastMode="all";
+  broadcastSelected=[];
+  document.getElementById("bc-message").value="";
+  document.getElementById("bc-status").style.display="none";
+  document.getElementById("bc-client-select").style.display="none";
+  document.getElementById("bc-all-btn").classList.add("active");
+  document.getElementById("bc-select-btn").classList.remove("active");
+  // Populate client list
+  const clients=USERS.filter(u=>u.role==="client");
+  document.getElementById("bc-client-list").innerHTML=clients.map(c=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px">
+      <input type="checkbox" value="${c.id}" style="accent-color:var(--gold);width:15px;height:15px" onchange="toggleBroadcastClient('${c.id}',this.checked)">
+      <span style="font-weight:600">${c.company}</span>
+      <span style="color:var(--brown-lt);font-size:11px">${c.email}</span>
+    </label>`).join("");
+  document.getElementById("broadcast-modal").classList.add("open");
+}
+
+function selectBroadcastAll(){
+  broadcastMode="all";
+  broadcastSelected=[];
+  document.getElementById("bc-all-btn").classList.add("active");
+  document.getElementById("bc-select-btn").classList.remove("active");
+  document.getElementById("bc-client-select").style.display="none";
+  // Uncheck all checkboxes
+  document.querySelectorAll("#bc-client-list input").forEach(cb=>cb.checked=false);
+}
+
+function selectBroadcastCustom(){
+  broadcastMode="select";
+  document.getElementById("bc-select-btn").classList.add("active");
+  document.getElementById("bc-all-btn").classList.remove("active");
+  document.getElementById("bc-client-select").style.display="block";
+}
+
+function toggleBroadcastClient(clientId, checked){
+  if(checked && !broadcastSelected.includes(clientId)) broadcastSelected.push(clientId);
+  if(!checked) broadcastSelected=broadcastSelected.filter(id=>id!==clientId);
+}
+
+async function sendBroadcast(){
+  const text=document.getElementById("bc-message").value.trim();
+  if(!text){showToast("Écris un message d'abord.");return;}
+
+  const clients=USERS.filter(u=>u.role==="client");
+  const targets=broadcastMode==="all"
+    ? clients
+    : clients.filter(c=>broadcastSelected.includes(c.id));
+
+  if(!targets.length){showToast("Sélectionne au moins un client.");return;}
+
+  const btn=document.querySelector("#broadcast-modal .btn-gold");
+  btn.textContent="Envoi en cours…";
+  btn.disabled=true;
+
+  for(const client of targets){
+    const msg={
+      from:"admin",
+      fromName:"Le Carousel Patisserie",
+      text,
+      ts:new Date().toISOString(),
+      role:"admin",
+      toClientId:client.id,
+      read:false
+    };
+    MESSAGES.push(msg);
+    await dbSaveMessage(msg);
+    // Email each client
+    if(client.email){
+      sendEmail(
+        client.email,
+        "Message from Le Carousel Patisserie",
+        `<div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;background:#FAF7F2;padding:32px">
+          <div style="text-align:center;margin-bottom:20px">
+            <h1 style="font-size:22px;color:#3D2B1F;margin:0">Le Carousel Patisserie</h1>
+            <p style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A07860;margin:4px 0 0">Wholesale · San Francisco</p>
+          </div>
+          <div style="background:white;border-radius:12px;padding:24px;border:1px solid rgba(61,43,31,0.12)">
+            <h2 style="font-size:16px;color:#3D2B1F;margin:0 0 16px">Message from your bakery</h2>
+            <div style="background:#F5F0E8;border-radius:8px;padding:14px 16px;font-size:14px;color:#3D2B1F;line-height:1.6">${text}</div>
+            <div style="margin-top:20px;text-align:center">
+              <a href="https://carousel-wholesale.vercel.app" style="background:#3D2B1F;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">View & Reply</a>
+            </div>
+          </div>
+          <p style="font-size:11px;color:#A07860;text-align:center;margin-top:16px">Le Carousel Patisserie · wholesale@carousel-patisserie.com</p>
+        </div>`
+      );
+    }
+  }
+
+  const statusEl=document.getElementById("bc-status");
+  statusEl.style.display="block";
+  statusEl.textContent=`✓ Message envoyé à ${targets.length} client${targets.length>1?"s":""} — ${targets.map(c=>c.company).join(", ")}`;
+  btn.textContent="📢 Envoyer";
+  btn.disabled=false;
+  document.getElementById("bc-message").value="";
+  broadcastSelected=[];
+  if(broadcastMode==="select") document.querySelectorAll("#bc-client-list input").forEach(cb=>cb.checked=false);
+}
 
 // ════════ HELPERS ════════
 function getWeekOrders(offset){
