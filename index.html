@@ -1064,7 +1064,7 @@ function renderClientMessages(){
   const container=document.getElementById("client-chat-messages");
   const msgs=MESSAGES.filter(m=>
     m.from===currentUser.id ||
-    (m.role==="admin" && m.toClientId===currentUser.id)
+    (m.role==="admin" && m.toClientId!==null && m.toClientId===currentUser.id)
   );
   container.innerHTML=msgs.length?msgs.map(m=>`
     <div>
@@ -1667,7 +1667,7 @@ function openInboxClient(clientId){
 
 function renderAdminConversation(clientId){
   const client=USERS.find(u=>u.id===clientId);
-  const msgs=MESSAGES.filter(m=>m.from===clientId||(m.role==="admin"&&m.toClientId===clientId));
+  const msgs=MESSAGES.filter(m=>m.from===clientId||(m.role==="admin"&&m.toClientId!==null&&m.toClientId===clientId));
   const container=document.getElementById("messages-content");
   container.innerHTML=`
     <button class="inbox-back" onclick="activeInboxClient=null;renderAdminInbox()">← Back to inbox</button>
@@ -1939,7 +1939,7 @@ function showKitchenConversation(clientId){
   const client=USERS.find(u=>u.id===clientId);
   MESSAGES.forEach(m=>{if(m.from===clientId) m.read=true;});
   updateMsgBadges();
-  const msgs=MESSAGES.filter(m=>m.from===clientId||(m.role==="admin"&&m.toClientId===clientId));
+  const msgs=MESSAGES.filter(m=>m.from===clientId||(m.role==="admin"&&m.toClientId!==null&&m.toClientId===clientId));
   const overlay=document.getElementById("kitchen-msg-overlay");
   if(!overlay) return;
   overlay.innerHTML=`
