@@ -255,6 +255,18 @@ button{cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
 .stay-signed-in{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--brown-mid)}
 .stay-signed-in input{accent-color:var(--gold);width:14px;height:14px}
 
+
+/* MESSAGE BADGES */
+.msg-badge{display:none;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:4px;vertical-align:middle}
+.msg-badge.show{display:inline-block}
+.inbox-item{background:#fff;border-radius:var(--radius);border:1.5px solid var(--border);padding:13px 16px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color .15s}
+.inbox-item:hover{border-color:var(--gold-lt)}
+.inbox-item.unread{border-color:var(--gold);background:var(--gold-pale)}
+.inbox-item-name{font-weight:700;font-size:14px;color:var(--dark)}
+.inbox-item-preview{font-size:12px;color:var(--brown-lt);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px}
+.inbox-back{background:none;border:none;color:var(--brown-lt);cursor:pointer;font-size:13px;padding:0 0 14px;display:flex;align-items:center;gap:5px}
+.inbox-back:hover{color:var(--brown)}
+
 /* TOAST */
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--dark);color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;z-index:999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;font-weight:500}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -497,7 +509,7 @@ button{cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
       <div class="anav-section">Setup</div>
       <div class="anav-item" onclick="adminTab('clients',this)">Clients</div>
       <div class="anav-item" onclick="adminTab('team',this)">Team</div>
-      <div class="anav-item" onclick="adminTab('messages',this)">Messages</div>
+      <div class="anav-item" onclick="adminTab('messages',this)">Messages <span class="msg-badge" id="nav-msg-badge"></span></div>
     </div>
     <div class="admin-content">
       <div id="po-print-area">
@@ -769,11 +781,11 @@ const CUTOFFS={2:{day:"Saturday",hour:11},3:{day:"Sunday",hour:11},4:{day:"Tuesd
 const DAY_NAMES=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
 const USERS=[
-  {id:"admin",name:"Admin",role:"admin",email:"admin@carousel.com",pass:"carousel2026",label:"Admin"},
-  {id:"kitchen",name:"Kitchen",role:"kitchen",email:"kitchen@carousel.com",pass:"kitchen2026",label:"Cuisine (BOF)"},
-  {id:"ben",name:"Ben",role:"driver",email:"ben@carousel.com",pass:"driver2026",label:"Driver — Ben",deliveryDays:[2,3,4,5,6]},
-  {id:"nader",name:"Nader",role:"driver",email:"nader@carousel.com",pass:"nader2026",label:"Driver — Nader",deliveryDays:[0,6]},
-  {id:"sales",name:"Sales Rep",role:"sales",email:"sales@carousel.com",pass:"sales2026",label:"Sales Rep"},
+  {id:"admin",name:"Admin",role:"admin",email:"admin@carousel.com",pass:"carousel2026",label:"Admin",canMessage:true},
+  {id:"kitchen",name:"Kitchen",role:"kitchen",email:"kitchen@carousel.com",pass:"kitchen2026",label:"Cuisine (BOF)",canMessage:false},
+  {id:"ben",name:"Ben",role:"driver",email:"ben@carousel.com",pass:"driver2026",label:"Driver — Ben",deliveryDays:[2,3,4,5,6],canMessage:false},
+  {id:"nader",name:"Nader",role:"driver",email:"nader@carousel.com",pass:"nader2026",label:"Driver — Nader",deliveryDays:[0,6],canMessage:false},
+  {id:"sales",name:"Sales Rep",role:"sales",email:"sales@carousel.com",pass:"sales2026",label:"Sales Rep",canMessage:true},
   {id:"ashley",name:"Ashley",role:"client",email:"ashley@thefold.com",pass:"fold2026",company:"The Fold",address:"123 Market St, San Francisco, CA",deliveryType:"delivery",deliveryDays:[0,3,6],deliveryWindow:"7:00–9:00 AM",label:"The Fold"},
   {id:"fromagerie",name:"Fromagerie",role:"client",email:"orders@fromagerie.com",pass:"fromage2026",company:"La Fromagerie SF",address:"456 Valencia St, San Francisco, CA",deliveryType:"delivery",deliveryDays:[2,3,5,6,0],deliveryWindow:"6:00–8:00 AM",label:"La Fromagerie"},
   {id:"stanford",name:"Stanford",role:"client",email:"orders@stanfordcoffee.com",pass:"stanford2026",company:"Stanford Coffee",address:"789 University Ave, Palo Alto, CA",deliveryType:"delivery",deliveryDays:[2,3,4,5],deliveryWindow:"7:00–9:00 AM",label:"Stanford Coffee"},
@@ -1033,7 +1045,24 @@ function sendClientMsg(){
 }
 
 // ════════ KITCHEN ════════
-function showKitchen(){showView("view-kitchen");renderKitchen();}
+function showKitchen(){
+  showView("view-kitchen");
+  renderKitchen();
+  // Add messages button to kitchen bottom nav if permitted
+  const kitchenNav=document.querySelector("#view-kitchen .bottom-nav");
+  if(kitchenNav && currentUser.canMessage){
+    if(!document.getElementById("kitchen-msg-btn")){
+      const btn=document.createElement("button");
+      btn.id="kitchen-msg-btn";
+      btn.className="bnav-item";
+      btn.style.color="rgba(255,255,255,.4)";
+      btn.innerHTML=`<span class="bnav-icon">💬</span>Messages<span class="msg-badge" id="kitchen-msg-badge"></span>`;
+      btn.onclick=()=>showKitchenMessages();
+      kitchenNav.insertBefore(btn,kitchenNav.lastElementChild);
+    }
+    updateMsgBadges();
+  }
+}
 function renderKitchen(){
   const wo=getWeekOrders(currentWeekOffset);
   document.getElementById("kitchen-week-label").textContent=getWeekLabel(currentWeekOffset);
@@ -1232,12 +1261,15 @@ function submitSalesOrder(){
 function showAdmin(){
   showView("view-admin");
   renderDashboard();renderProductionSheet();renderOrdersPanel();renderUpcomingPanel();renderEZCaterPanel();renderRoutePanel();renderClientsPanel();renderTeamPanel();renderAdminMessages();
+  updateMsgBadges();
 }
 function adminTab(tab,btn){
   document.querySelectorAll(".admin-panel").forEach(p=>p.classList.remove("active"));
   document.querySelectorAll(".anav-item").forEach(b=>b.classList.remove("active"));
   const panel=document.getElementById("apanel-"+tab);if(panel) panel.classList.add("active");
   if(btn) btn.classList.add("active");
+  if(tab==="messages") renderAdminMessages();
+  updateMsgBadges();
 }
 function renderDashboard(){
   const wo=getWeekOrders(0),rev=wo.reduce((s,o)=>s+o.total,0),pcs=wo.reduce((s,o)=>s+o.items.reduce((ss,i)=>ss+i.qty,0),0);
@@ -1474,20 +1506,43 @@ function renderTeamPanel(){
             <option value="admin">Admin</option>
           </select>
         </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <input type="checkbox" id="tm-can-message" style="accent-color:var(--gold);width:16px;height:16px">
+          <label for="tm-can-message" style="font-size:13px;color:var(--brown-mid);cursor:pointer">Accès messagerie clients</label>
+        </div>
         <div style="display:flex;gap:8px;margin-top:4px">
           <button class="btn btn-primary btn-sm" onclick="addTeamMember()">Create Account</button>
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('add-team-form').style.display='none'">Cancel</button>
         </div>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px" id="team-grid">
+    <div style="background:var(--gold-pale);border:1px solid var(--gold-lt);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--brown-mid);margin-bottom:16px">
+      💬 Active le toggle <strong>Messages</strong> pour donner accès à la messagerie client à un membre de l'équipe.
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px" id="team-grid">
       ${USERS.filter(u=>u.role!=="client").map(u=>`<div class="card" style="padding:14px">
         <div style="font-weight:700;font-size:14px;margin-bottom:3px">${u.name}</div>
         <div style="font-size:12px;color:var(--brown-lt);margin-bottom:8px">${u.email}</div>
-        <div style="margin-bottom:8px"><span class="badge ${u.role==="admin"?"badge-gold":u.role==="kitchen"?"badge-brown":u.role==="driver"?"badge-blue":"badge-purple"}">${u.role==="kitchen"?"Cuisine (BOF)":u.role}</span></div>
+        <div style="margin-bottom:12px"><span class="badge ${u.role==="admin"?"badge-gold":u.role==="kitchen"?"badge-brown":u.role==="driver"?"badge-blue":"badge-purple"}">${u.role==="kitchen"?"Cuisine (BOF)":u.role}</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border);margin-bottom:10px">
+          <span style="font-size:12px;color:var(--brown-mid);font-weight:500">💬 Accès messages</span>
+          <label style="position:relative;width:36px;height:20px;cursor:pointer;display:inline-block">
+            <input type="checkbox" ${u.canMessage?"checked":""} onchange="toggleCanMessage('${u.id}',this.checked)" style="opacity:0;width:0;height:0;position:absolute">
+            <span style="position:absolute;inset:0;background:${u.canMessage?"var(--sage)":"var(--border-strong)"};border-radius:10px;transition:background .2s"></span>
+            <span style="position:absolute;top:2px;left:${u.canMessage?"18":"2"}px;width:16px;height:16px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
+          </label>
+        </div>
         ${u.id!=="admin"?`<button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;color:var(--red);border-color:var(--red-pale)" onclick="removeTeamMember('${u.id}')">Remove</button>`:""}
       </div>`).join("")}
     </div>`;
+}
+function toggleCanMessage(userId, val){
+  const user=USERS.find(u=>u.id===userId);
+  if(user){
+    user.canMessage=val;
+    renderTeamPanel();
+    showToast((val?"✓ Accès messages activé":"Accès messages retiré")+" pour "+user.name);
+  }
 }
 function showAddTeamMember(){
   const form=document.getElementById("add-team-form");
@@ -1498,10 +1553,11 @@ function addTeamMember(){
   const email=document.getElementById("tm-email").value.trim().toLowerCase();
   const pass=document.getElementById("tm-pass").value.trim();
   const role=document.getElementById("tm-role").value;
+  const canMessage=document.getElementById("tm-can-message")?.checked||false;
   if(!name||!email||!pass){showToast("Fill in all fields.");return;}
   if(USERS.find(u=>u.email===email)){showToast("Email already exists.");return;}
   const id="team-"+Date.now();
-  USERS.push({id,name,role,email,pass,label:name});
+  USERS.push({id,name,role,email,pass,label:name,canMessage});
   showToast("Account created for "+name+" ✓");
   document.getElementById("tm-name").value="";
   document.getElementById("tm-email").value="";
@@ -1513,30 +1569,103 @@ function removeTeamMember(id){
   const idx=USERS.findIndex(u=>u.id===id);
   if(idx>=0){const name=USERS[idx].name;USERS.splice(idx,1);renderTeamPanel();showToast(name+" removed from team");}
 }
+let activeInboxClient = null;
+
+function getUnreadCount(){
+  return MESSAGES.filter(m=>m.role==="client"&&!m.read).length;
+}
+
+function updateMsgBadges(){
+  const count=getUnreadCount();
+  document.querySelectorAll(".msg-badge").forEach(b=>{
+    b.textContent=count;
+    b.classList.toggle("show",count>0);
+  });
+}
+
 function renderAdminMessages(){
-  document.getElementById("messages-content").innerHTML=`
-    <h2 class="sec-title" style="margin-bottom:16px">Client Messages</h2>
-    <div class="chat-container" style="max-height:420px">
-      <div class="chat-messages" id="admin-chat-messages"></div>
+  if(activeInboxClient) renderAdminConversation(activeInboxClient);
+  else renderAdminInbox();
+}
+
+function renderAdminInbox(){
+  const clients=USERS.filter(u=>u.role==="client");
+  const container=document.getElementById("messages-content");
+  container.innerHTML=`
+    <div class="sec-header">
+      <h2 class="sec-title">Messages <span class="msg-badge" id="inbox-badge"></span></h2>
+    </div>
+    <div id="inbox-list">
+      ${clients.map(c=>{
+        const msgs=MESSAGES.filter(m=>m.from===c.id||m.role==="admin");
+        const last=msgs[msgs.length-1];
+        const unread=MESSAGES.filter(m=>m.from===c.id&&!m.read).length;
+        if(!last) return `<div class="inbox-item" onclick="openInboxClient('${c.id}')">
+          <div><div class="inbox-item-name">${c.company}</div><div class="inbox-item-preview" style="font-style:italic;color:var(--border-strong)">No messages yet</div></div>
+          <span style="font-size:11px;color:var(--brown-lt)">${c.deliveryType}</span>
+        </div>`;
+        return `<div class="inbox-item ${unread?"unread":""}" onclick="openInboxClient('${c.id}')">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="inbox-item-name">${c.company}</div>
+              ${unread?`<span style="background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px">${unread}</span>`:""}
+            </div>
+            <div class="inbox-item-preview">${last.role==="admin"?"You: ":""}${last.text}</div>
+          </div>
+          <div style="font-size:11px;color:var(--brown-lt);flex-shrink:0;margin-left:10px">${new Date(last.ts).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}</div>
+        </div>`;
+      }).join("")}
+    </div>`;
+  updateMsgBadges();
+}
+
+function openInboxClient(clientId){
+  activeInboxClient=clientId;
+  // Mark messages as read
+  MESSAGES.forEach(m=>{if(m.from===clientId) m.read=true;});
+  updateMsgBadges();
+  renderAdminConversation(clientId);
+}
+
+function renderAdminConversation(clientId){
+  const client=USERS.find(u=>u.id===clientId);
+  const msgs=MESSAGES.filter(m=>m.from===clientId||(m.role==="admin"&&m.toClientId===clientId));
+  const container=document.getElementById("messages-content");
+  container.innerHTML=`
+    <button class="inbox-back" onclick="activeInboxClient=null;renderAdminInbox()">← Back to inbox</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div style="font-weight:700;font-size:16px;color:var(--dark)">${client?.company||clientId}</div>
+        <div style="font-size:12px;color:var(--brown-lt)">${client?.email||""}</div>
+      </div>
+      <span class="badge ${client?.deliveryType==="delivery"?"badge-sage":"badge-gold"}">${client?.deliveryType||""}</span>
+    </div>
+    <div class="chat-container" style="max-height:380px">
+      <div class="chat-messages" id="admin-chat-messages">
+        ${msgs.length?msgs.map(m=>`
+          <div>
+            <div class="chat-msg ${m.role==="admin"?"client":"admin"}">${m.text}</div>
+            <div class="chat-msg-meta" style="${m.role==="admin"?"text-align:right":""}">${m.fromName} · ${new Date(m.ts).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}</div>
+          </div>`).join(""):`<p style="color:var(--brown-lt);font-size:13px;font-style:italic;text-align:center;padding:20px">No messages yet.</p>`}
+      </div>
       <div class="chat-input-area">
-        <input class="chat-input" id="admin-chat-input" placeholder="Reply to clients…" onkeydown="if(event.key==='Enter')sendAdminMsg()">
+        <input class="chat-input" id="admin-chat-input" placeholder="Reply to ${client?.name||"client"}…" onkeydown="if(event.key==='Enter')sendAdminMsg()">
         <button class="btn btn-primary btn-sm" onclick="sendAdminMsg()">Send</button>
       </div>
     </div>`;
   const el=document.getElementById("admin-chat-messages");
-  el.innerHTML=MESSAGES.map(m=>`
-    <div>
-      <div class="chat-msg ${m.role==="admin"?"client":"admin"}">${m.text}</div>
-      <div class="chat-msg-meta" style="${m.role==="admin"?"text-align:right":""}">${m.fromName} · ${new Date(m.ts).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}</div>
-    </div>`).join("")||`<p style="color:var(--brown-lt);font-size:13px;font-style:italic;text-align:center;padding:20px">No messages.</p>`;
-  el.scrollTop=el.scrollHeight;
+  if(el) el.scrollTop=el.scrollHeight;
 }
+
 function sendAdminMsg(){
   const input=document.getElementById("admin-chat-input"),text=input.value.trim();
-  if(!text) return;
-  const amsg={from:"admin",fromName:"Le Carousel Patisserie",text,ts:new Date().toISOString(),role:"admin"};
+  if(!text||!activeInboxClient) return;
+  const client=USERS.find(u=>u.id===activeInboxClient);
+  const amsg={from:"admin",fromName:"Le Carousel Patisserie",text,ts:new Date().toISOString(),role:"admin",toClientId:activeInboxClient};
   MESSAGES.push(amsg);dbSaveMessage(amsg);
-  input.value="";renderAdminMessages();showToast("Message sent ✓");
+  input.value="";
+  renderAdminConversation(activeInboxClient);
+  showToast("Message sent to "+client?.company+" ✓");
 }
 
 // ════════ INVITE ════════
@@ -1610,6 +1739,72 @@ function getWeekLabel(offset){
   return monday.toLocaleDateString("en-US",{month:"short",day:"numeric"})+" – "+sunday.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
 }
 function changeWeek(d){currentWeekOffset+=d;}
+
+function showKitchenMessages(){
+  if(!currentUser.canMessage){showToast("Vous n\'avez pas accès à la messagerie.");return;}
+  // Show a simple messages overlay in kitchen
+  const existing=document.getElementById("kitchen-msg-overlay");
+  if(existing){existing.remove();return;}
+  const overlay=document.createElement("div");
+  overlay.id="kitchen-msg-overlay";
+  overlay.style.cssText="position:fixed;inset:0;background:var(--dark);z-index:100;display:flex;flex-direction:column;padding:16px;overflow-y:auto";
+  const clients=USERS.filter(u=>u.role==="client");
+  overlay.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:700;color:#fff">Messages clients</h2>
+      <button onclick="document.getElementById('kitchen-msg-overlay').remove()" style="background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer">Fermer</button>
+    </div>
+    ${clients.map(c=>{
+      const msgs=MESSAGES.filter(m=>m.from===c.id||m.role==="admin");
+      const last=msgs[msgs.length-1];
+      const unread=MESSAGES.filter(m=>m.from===c.id&&!m.read).length;
+      return `<div onclick="showKitchenConversation('${c.id}')" style="background:#2A2420;border-radius:10px;padding:13px;margin-bottom:8px;cursor:pointer;border:1.5px solid ${unread?"var(--gold)":"rgba(255,255,255,.08)"}">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-weight:700;color:#fff">${c.company}</span>
+          ${unread?`<span style="background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px">${unread}</span>`:""}
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,.4)">${last?last.text:"No messages yet"}</div>
+      </div>`;
+    }).join("")}`;
+  document.body.appendChild(overlay);
+}
+
+function showKitchenConversation(clientId){
+  const client=USERS.find(u=>u.id===clientId);
+  MESSAGES.forEach(m=>{if(m.from===clientId) m.read=true;});
+  updateMsgBadges();
+  const msgs=MESSAGES.filter(m=>m.from===clientId||(m.role==="admin"&&m.toClientId===clientId));
+  const overlay=document.getElementById("kitchen-msg-overlay");
+  if(!overlay) return;
+  overlay.innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <button onclick="showKitchenMessages()" style="background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer">← Retour</button>
+      <h2 style="font-size:16px;font-weight:700;color:#fff">${client?.company}</h2>
+    </div>
+    <div style="flex:1;overflow-y:auto;margin-bottom:12px">
+      ${msgs.map(m=>`<div style="margin-bottom:10px">
+        <div style="max-width:80%;background:${m.role==="client"?"#3D3028":"rgba(255,255,255,.08)"};border-radius:10px;padding:10px 12px;font-size:13px;color:#fff;${m.role==="admin"?"margin-left:auto":""}">
+          ${m.text}
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:3px;${m.role==="admin"?"text-align:right":""}">${m.fromName} · ${new Date(m.ts).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})}</div>
+      </div>`).join("")}
+    </div>
+    <div style="display:flex;gap:8px">
+      <input id="kitchen-reply-input" style="flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:10px 12px;color:#fff;font-size:13px;outline:none;font-family:inherit" placeholder="Reply to ${client?.name}…" onkeydown="if(event.key==='Enter')sendKitchenReply('${clientId}')">
+      <button onclick="sendKitchenReply('${clientId}')" style="background:var(--gold);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer">Send</button>
+    </div>`;
+}
+
+function sendKitchenReply(clientId){
+  if(!currentUser.canMessage) return;
+  const input=document.getElementById("kitchen-reply-input");
+  const text=input.value.trim(); if(!text) return;
+  const msg={from:"admin",fromName:currentUser.name+" (Le Carousel Patisserie)",text,ts:new Date().toISOString(),role:"admin",toClientId:clientId};
+  MESSAGES.push(msg);dbSaveMessage(msg);
+  input.value="";
+  showKitchenConversation(clientId);
+  showToast("Message envoyé ✓");
+}
 function fmtDate(d){return d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});}
 function fmtDateLong(d){return d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});}
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),3000);}
