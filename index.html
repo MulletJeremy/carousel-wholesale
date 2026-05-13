@@ -868,7 +868,11 @@ function doLogin(){
 }
 async function launchUser(user){
   await Promise.all([dbLoadOrders(), dbLoadMessages()]);
-  ({admin:showAdmin,kitchen:showKitchen,driver:showDriver,sales:showSales,client:showClient})[user.role]?.();
+  const viewFn = ({admin:showAdmin,kitchen:showKitchen,driver:showDriver,sales:showSales,client:showClient})[user.role];
+  if(viewFn) await viewFn();
+  // Re-render messages after DB load to ensure correct filtering
+  if(user.role==="admin") renderAdminInbox();
+  if(user.role==="client") renderClientMessages();
 }
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.getElementById("view-login").classList.contains("active"))doLogin();});
 function doLogout(){
@@ -1636,7 +1640,7 @@ function renderAdminInbox(){
     </div>
     <div id="inbox-list">
       ${clients.map(c=>{
-        const msgs=MESSAGES.filter(m=>m.from===c.id||(m.role==="admin"&&m.toClientId===c.id));
+        const msgs=MESSAGES.filter(m=>m.from===c.id||(m.role==="admin"&&m.toClientId===c.id)).sort((a,b)=>new Date(a.ts)-new Date(b.ts));
         const last=msgs[msgs.length-1];
         const unread=MESSAGES.filter(m=>m.from===c.id&&!m.read).length;
         if(!last) return `<div class="inbox-item" onclick="openInboxClient('${c.id}')">
