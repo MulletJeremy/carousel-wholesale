@@ -659,7 +659,7 @@ async function dbLoadMessages(){
         from:r.from_id, fromName:r.from_name||'',
         text:r.text||'', ts:r.ts||new Date().toISOString(),
         role:r.role||'client', read:false,
-        toClientId:r.to_client_id||null
+        toClientId:r.to_client_id ? String(r.to_client_id).trim() : null
       }));
     }
   }catch(e){ console.warn('DB load messages failed:',e.message||JSON.stringify(e)); }
@@ -670,7 +670,7 @@ async function dbSaveMessage(msg){
     const {error} = await supa.from('messages').insert({
       from_id:msg.from, from_name:msg.fromName,
       text:msg.text, ts:msg.ts, role:msg.role,
-      to_client_id:msg.toClientId||null
+      to_client_id:msg.toClientId ? String(msg.toClientId).trim() : null
     });
     if(error){ console.warn('DB save message failed:',JSON.stringify(error));return; }
   }catch(e){ console.warn('DB save message failed:',e.message||JSON.stringify(e)); }
@@ -1062,10 +1062,11 @@ function renderClientHistory(){
 }
 function renderClientMessages(){
   const container=document.getElementById("client-chat-messages");
-  const msgs=MESSAGES.filter(m=>
-    m.from===currentUser.id ||
-    (m.role==="admin" && m.toClientId!==null && m.toClientId===currentUser.id)
-  );
+  const msgs=MESSAGES.filter(m=>{
+    if(m.from===currentUser.id) return true;
+    if(m.role==="admin" && typeof m.toClientId==="string" && m.toClientId.trim()===currentUser.id.trim()) return true;
+    return false;
+  });
   container.innerHTML=msgs.length?msgs.map(m=>`
     <div>
       <div class="chat-msg ${m.role==="client"?"client":"admin"}">${m.text}</div>
