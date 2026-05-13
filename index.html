@@ -1636,7 +1636,7 @@ function renderAdminInbox(){
     </div>
     <div id="inbox-list">
       ${clients.map(c=>{
-        const msgs=MESSAGES.filter(m=>m.from===c.id||m.role==="admin");
+        const msgs=MESSAGES.filter(m=>m.from===c.id||(m.role==="admin"&&m.toClientId===c.id));
         const last=msgs[msgs.length-1];
         const unread=MESSAGES.filter(m=>m.from===c.id&&!m.read).length;
         if(!last) return `<div class="inbox-item" onclick="openInboxClient('${c.id}')">
