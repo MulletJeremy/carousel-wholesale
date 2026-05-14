@@ -12,7 +12,7 @@ module.exports = async (req, res) => {
   if (!tokenRow) return res.status(401).json({ error: 'Not connected to QuickBooks' });
 
   const { order } = req.body;
-  const baseUrl = `https://sandbox-quickbooks.api.intuit.com/v3/company/${tokenRow.realm_id}`;
+  const baseUrl = `https://quickbooks.api.intuit.com/v3/company/${tokenRow.realm_id}`;
   const headers = {
     'Authorization': `Bearer ${tokenRow.access_token}`,
     'Content-Type': 'application/json',
@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
 
   // Find or create customer
   const queryRes = await fetch(
-    `${baseUrl}/query?query=SELECT * FROM Customer WHERE DisplayName = '${order.clientName.replace("'","\\'")}' &minorversion=65`,
+    `${baseUrl}/query?query=SELECT * FROM Customer WHERE DisplayName = '${order.clientName.replace("'", "\\'")}' &minorversion=65`,
     { headers }
   );
   const queryData = await queryRes.json();
