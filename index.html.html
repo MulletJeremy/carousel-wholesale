@@ -2940,6 +2940,61 @@ function applyPasswordReset(email, container){
   if(user){ user.pass = newPass; container.remove(); showToast('Password updated! Please sign in.'); window.history.replaceState({}, '', window.location.pathname); }
 }
 
+
+// ════════ ACCOUNT CREATION ════════
+let pendingInviteData = null;
+
+function showAccountCreation(data){
+  pendingInviteData = data;
+  const modal = document.getElementById('account-creation-modal');
+  if(!modal){ console.warn('account-creation-modal not found'); return; }
+  document.getElementById('ac-title').textContent = 'Welcome, '+(data.name||data.company)+'!';
+  document.getElementById('ac-subtitle').textContent = "You've been invited to the Le Carousel Patisserie wholesale portal.";
+  document.getElementById('ac-email').value = data.email;
+  document.getElementById('ac-info').innerHTML = 
+    '<strong>'+data.company+'</strong><br>'+
+    (data.dtype==='delivery'?'🚚 Delivery':'🏪 Pickup')+' · ⏰ '+(data.window||'TBD');
+  document.getElementById('ac-error').style.display='none';
+  document.getElementById('ac-pass').value='';
+  document.getElementById('ac-pass2').value='';
+  modal.classList.add('open');
+}
+
+function createAccount(){
+  const pass = document.getElementById('ac-pass').value;
+  const pass2 = document.getElementById('ac-pass2').value;
+  const errEl = document.getElementById('ac-error');
+  errEl.style.display='none';
+  if(pass.length < 6){errEl.textContent='Password must be at least 6 characters.';errEl.style.display='block';return;}
+  if(pass !== pass2){errEl.textContent='Passwords do not match.';errEl.style.display='block';return;}
+  if(!pendingInviteData) return;
+  const data = pendingInviteData;
+  const existing = USERS.find(u=>u.email.toLowerCase()===data.email.toLowerCase());
+  if(existing){
+    existing.pass = pass;
+    closeModal('account-creation-modal');
+    currentUser = existing;
+    launchUser(existing);
+    window.history.replaceState({}, '', window.location.pathname);
+    return;
+  }
+  const id = 'client-'+Date.now();
+  const newUser = {
+    id, name: data.name||data.company, role: 'client',
+    email: data.email, pass: pass, company: data.company,
+    address: '', deliveryType: data.dtype||'delivery',
+    deliveryDays: [2,3,4,5,6],
+    deliveryWindow: data.window||'7:00–9:00 AM',
+    label: data.company, canMessage: true
+  };
+  USERS.push(newUser);
+  closeModal('account-creation-modal');
+  window.history.replaceState({}, '', window.location.pathname);
+  currentUser = newUser;
+  launchUser(newUser);
+  showToast('Account created! Welcome, '+data.company+' ✓');
+}
+
 document.addEventListener("DOMContentLoaded", function(){
   checkResetToken();
   // Check invite token in URL
