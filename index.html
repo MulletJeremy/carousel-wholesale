@@ -905,6 +905,22 @@ let currentUser=null,currentWeekOffset=0,cart={},dType="delivery",selDelivDate=n
 let orderType="one-time",recurringDays=[],driverSelDate=null;
 const salesCart={};
 
+
+// ════════════════════════════════
+// ROLE PERMISSIONS
+// ════════════════════════════════
+const ROLE_PERMISSIONS = {
+  admin:   {dashboard:true, production:true, orders:true, upcoming:true, ezcater:true, route:true, clients:true, team:true, messages:true, integrations:true, canConfirm:true, canInvoice:true, canEdit:true},
+  kitchen: {dashboard:true, production:true, orders:true, upcoming:false, ezcater:false, route:false, clients:false, team:false, messages:true, integrations:false, canConfirm:true, canInvoice:false, canEdit:false},
+  driver:  {dashboard:false, production:false, orders:false, upcoming:false, ezcater:false, route:true, clients:false, team:false, messages:false, integrations:false, canConfirm:false, canInvoice:false, canEdit:false},
+  sales:   {dashboard:true, production:false, orders:true, upcoming:true, ezcater:false, route:false, clients:true, team:false, messages:true, integrations:false, canConfirm:true, canInvoice:false, canEdit:true},
+};
+
+function canDo(action){
+  const perms = ROLE_PERMISSIONS[currentUser?.role] || {};
+  return perms[action] === true;
+}
+
 // ════════ AUTH ════════
 // Demo pills removed — invitation-only access
 function doLogin(){
@@ -920,11 +936,13 @@ function doLogin(){
 }
 async function launchUser(user){
   await Promise.all([dbLoadOrders(), dbLoadMessages()]);
-  const viewFn = ({admin:showAdmin,kitchen:showKitchen,driver:showDriver,sales:showSales,client:showClient})[user.role];
-  if(viewFn) await viewFn();
-  // Re-render messages after DB load to ensure correct filtering
-  if(user.role==="admin") renderAdminInbox();
-  if(user.role==="client") renderClientMessages();
+  if(user.role==="client"){
+    showClient();
+    renderClientMessages();
+  } else {
+    showStaff();
+    if(user.canMessage) renderAdminInbox();
+  }
 }
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.getElementById("view-login").classList.contains("active"))doLogin();});
 function doLogout(){
@@ -1175,24 +1193,7 @@ function sendClientMsg(){
 }
 
 // ════════ KITCHEN ════════
-function showKitchen(){
-  showView("view-kitchen");
-  renderKitchen();
-  // Add messages button to kitchen bottom nav if permitted
-  const kitchenNav=document.querySelector("#view-kitchen .bottom-nav");
-  if(kitchenNav && currentUser.canMessage){
-    if(!document.getElementById("kitchen-msg-btn")){
-      const btn=document.createElement("button");
-      btn.id="kitchen-msg-btn";
-      btn.className="bnav-item";
-      btn.style.color="rgba(255,255,255,.4)";
-      btn.innerHTML=`<span class="bnav-icon">💬</span>Messages<span class="msg-badge" id="kitchen-msg-badge"></span>`;
-      btn.onclick=()=>showKitchenMessages();
-      kitchenNav.insertBefore(btn,kitchenNav.lastElementChild);
-    }
-    updateMsgBadges();
-  }
-}
+function showKitchen(){ showStaff(); }
 let kitchenSelected = new Set();
 
 function renderKitchen(){
@@ -1258,12 +1259,16 @@ function renderKitchen(){
 function kitchenToggleSelect(id, checked){
   if(checked) kitchenSelected.add(id); else kitchenSelected.delete(id);
   const card=document.getElementById("kcard-"+id);
-  if(card) card.style.borderColor=checked?"var(--gold)":"rgba(255,255,255,.08)";
+  if(card) card.style.borderColor=checked?"var(--gold)":"var(--border)";
   const wo=getWeekOrders(currentWeekOffset);
-  const allChk=document.getElementById("kitchen-select-all");
-  if(allChk) allChk.checked=kitchenSelected.size===wo.length;
-  const countEl=document.getElementById("kitchen-sel-count");
-  if(countEl) countEl.textContent=kitchenSelected.size>0?kitchenSelected.size+" selected":"";
+  ['kitchen-select-all','kitchen-select-all-prod'].forEach(eid=>{
+    const el=document.getElementById(eid);
+    if(el) el.checked=kitchenSelected.size===wo.length;
+  });
+  ['kitchen-sel-count','kitchen-sel-count-prod'].forEach(eid=>{
+    const el=document.getElementById(eid);
+    if(el) el.textContent=kitchenSelected.size>0?kitchenSelected.size+" selected":"";
+  });
 }
 
 function kitchenSelectAll(checked){
@@ -1331,8 +1336,92 @@ ${poContents.map((c,i)=>`<div class="${i<poContents.length-1?"page-break":""}">$
   kitchenSelected.clear();renderKitchen();
 }
 
+
+function renderKitchenInProduction(){
+  const wo=getWeekOrders(currentWeekOffset);
+  const lbl=getWeekLabel(currentWeekOffset);
+  document.getElementById("prod-content").innerHTML=`
+    <div class="sec-header">
+      <h2 class="sec-title">Production</h2>
+      <div class="week-nav">
+        <button class="week-btn" onclick="changeWeek(-1);renderProductionSheet()">‹</button>
+        <span class="week-label">${lbl}</span>
+        <button class="week-btn" onclick="changeWeek(1);renderProductionSheet()">›</button>
+      </div>
+    </div>
+    <div id="kitchen-summary-prod"></div>
+    <div id="kitchen-orders-prod"></div>`;
+
+  // Reuse kitchen render logic but in light theme
+  const totals={};
+  wo.forEach(o=>o.items.forEach(i=>{totals[i.name]=(totals[i.name]||0)+i.qty;}));
+  
+  const summaryEl = document.getElementById("kitchen-summary-prod");
+  if(summaryEl){
+    summaryEl.innerHTML = `<div class="card" style="padding:16px;margin-bottom:16px">
+      <p class="pill-label" style="margin-bottom:10px">Total à produire — ${lbl}</p>
+      ${Object.entries(totals).filter(([,v])=>v>0).map(([name,qty])=>`
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">
+          <span>${name}</span><span style="font-weight:700;font-size:16px;color:var(--brown)">${qty}</span>
+        </div>`).join("")||'<p style="color:var(--brown-lt);font-style:italic">No orders this week</p>'}
+    </div>`;
+  }
+
+  const now=new Date(),monday=new Date(now);
+  monday.setDate(now.getDate()-now.getDay()+1+(currentWeekOffset*7));
+  const days=["Tue","Wed","Thu","Fri","Sat","Sun"].map((name,i)=>{
+    const d=new Date(monday);d.setDate(monday.getDate()+1+i);
+    return {name,date:d,ds:d.toISOString().split("T")[0]};
+  });
+
+  const ordersEl = document.getElementById("kitchen-orders-prod");
+  if(!ordersEl) return;
+
+  const allIds=wo.map(o=>o.id);
+  ordersEl.innerHTML=`
+    <div class="card" style="padding:12px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:600;color:var(--brown-mid)">
+        <input type="checkbox" id="kitchen-select-all-prod" onchange="kitchenSelectAll(this.checked)" style="accent-color:var(--gold);width:15px;height:15px">
+        Select all (${wo.length})
+      </label>
+      <span id="kitchen-sel-count-prod" style="font-size:12px;color:var(--brown-lt)">${kitchenSelected.size>0?kitchenSelected.size+" selected":""}</span>
+      <div style="margin-left:auto;display:flex;gap:7px;flex-wrap:wrap">
+        <button onclick="kitchenBulkAction('confirmed')" class="btn btn-sm" style="background:var(--sage-pale);color:var(--sage);border:1px solid var(--sage-pale)">✓ Confirm</button>
+        <button onclick="kitchenBulkAction('delivered')" class="btn btn-sm" style="background:#EAF3DE;color:#3B6D11;border:1px solid #EAF3DE">📦 Delivered</button>
+        <button onclick="kitchenBulkAction('invoiced')" class="btn btn-sm btn-ghost">↗ Invoice</button>
+        <button onclick="kitchenPrintSelected()" class="btn btn-sm btn-ghost">🖨 Print</button>
+      </div>
+    </div>
+    ${days.map(day=>{
+      const dayOrders=wo.filter(o=>o.deliveryDate===day.ds);
+      if(!dayOrders.length) return "";
+      return `<p class="pill-label" style="margin-bottom:8px">${day.name} ${day.date.toLocaleDateString("en-US",{month:"short",day:"numeric"})}</p>
+        ${dayOrders.map(o=>`<div class="card" id="kcard-${o.id}" style="margin-bottom:10px;border-color:${kitchenSelected.has(o.id)?"var(--gold)":"var(--border)"};overflow:hidden">
+          <div style="padding:12px 14px;display:flex;align-items:flex-start;gap:10px">
+            <input type="checkbox" ${kitchenSelected.has(o.id)?"checked":""} onchange="kitchenToggleSelect('${o.id}',this.checked)" style="accent-color:var(--gold);width:16px;height:16px;margin-top:3px;flex-shrink:0;cursor:pointer">
+            <div style="flex:1">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                <div>
+                  <div style="font-weight:700;font-size:14px;color:var(--dark)">${o.clientName}</div>
+                  <div style="font-size:12px;color:var(--brown-lt);margin-top:2px">${o.deliveryType==="delivery"?"🚚":"🏪"} ${o.deliveryWindow||""} · ${o.id}</div>
+                  <div style="margin-top:5px"><span class="status-chip status-${o.status}">${o.status}</span></div>
+                </div>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-ghost btn-sm" onclick="printPOAndOpen('${o.id}')">🖨</button>
+                  <button class="btn btn-ghost btn-sm" onclick="showSlipModal('${o.id}')">📋</button>
+                </div>
+              </div>
+              <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+                ${o.items.map(i=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(61,43,31,.05);font-size:13px"><span>${i.name}</span><span style="font-weight:700;font-size:16px;color:var(--brown)">${i.qty}</span></div>`).join("")}
+              </div>
+            </div>
+          </div>
+        </div>`).join("")}`;
+    }).join("")}`;
+}
+
 // ════════ DRIVER ════════
-function showDriver(){showView("view-driver");renderDriverDayTabs();}
+function showDriver(){ showStaff(); }
 function renderDriverDayTabs(){
   const now=new Date(),monday=new Date(now);
   monday.setDate(now.getDate()-now.getDay()+1+(currentWeekOffset*7));
@@ -1396,7 +1485,7 @@ function markDeliveredDriver(id,btn){
 }
 
 // ════════ SALES ════════
-function showSales(){showView("view-sales");renderSalesOverview();}
+function showSales(){ showStaff(); }
 function salesTab(tab,btn){
   ["overview","orders","clients","neworder"].forEach(t=>{const el=document.getElementById("stab-"+t);if(el) el.style.display=t===tab?"block":"none";});
   document.querySelectorAll("#sales-tabs .ftab").forEach(b=>b.classList.remove("active"));
@@ -1495,10 +1584,74 @@ function submitSalesOrder(){
 }
 
 // ════════ ADMIN ════════
-function showAdmin(){
+function showStaff(){
   showView("view-admin");
-  renderDashboard();renderProductionSheet();renderOrdersPanel();renderUpcomingPanel();renderEZCaterPanel();renderRoutePanel();renderClientsPanel();renderTeamPanel();renderAdminMessages();
+  buildStaffNav();
+  // Load first available panel
+  const perms = ROLE_PERMISSIONS[currentUser?.role] || {};
+  const first = ['dashboard','production','orders','route','clients','messages'].find(p=>perms[p]);
+  if(first) adminTab(first, null);
+  if(perms.dashboard) renderDashboard();
+  if(perms.production) renderProductionSheet();
+  if(perms.orders) renderOrdersPanel();
+  if(perms.upcoming) renderUpcomingPanel();
+  if(perms.ezcater) renderEZCaterPanel();
+  if(perms.route) renderRoutePanel();
+  if(perms.clients) renderClientsPanel();
+  if(perms.team) renderTeamPanel();
+  if(perms.messages) renderAdminMessages();
   updateMsgBadges();
+}
+function showAdmin(){ showStaff(); }
+
+function buildStaffNav(){
+  const perms = ROLE_PERMISSIONS[currentUser?.role] || {};
+  const roleLabels = {admin:'Admin', kitchen:'BOF', driver:'Driver', sales:'Sales Rep'};
+  const roleBadges = {admin:'badge-gold', kitchen:'badge-brown', driver:'badge-blue', sales:'badge-purple'};
+  
+  // Update topnav badge
+  document.querySelector('.topnav .badge').className = 'badge ' + (roleBadges[currentUser.role]||'badge-brown');
+  document.querySelector('.topnav .badge').textContent = roleLabels[currentUser.role]||currentUser.role;
+
+  // Build sidebar nav
+  const sidebar = document.querySelector('.admin-sidebar');
+  let nav = '';
+  const a=(tab,label)=>`<div class="anav-item" onclick="adminTab('${tab}',this)">${label}</div>`;
+  if(perms.dashboard || perms.production){
+    nav += '<div class="anav-section">Overview</div>';
+    if(perms.dashboard) nav += a('dashboard','Dashboard');
+    if(perms.production) nav += a('production','Production');
+  }
+  if(perms.orders || perms.upcoming || perms.ezcater){
+    nav += '<div class="anav-section">Orders</div>';
+    if(perms.orders) nav += a('orders','All Orders');
+    if(perms.upcoming) nav += a('upcoming','Upcoming');
+    if(perms.ezcater) nav += a('ezcater','🟠 EZCater');
+  }
+  if(perms.route){
+    nav += '<div class="anav-section">Delivery</div>';
+    nav += a('route','Daily Route');
+  }
+  if(perms.clients || perms.team || perms.messages || perms.integrations){
+    nav += '<div class="anav-section">Setup</div>';
+    if(perms.clients) nav += a('clients','Clients');
+    if(perms.team) nav += a('team','Team');
+    if(perms.integrations) nav += '<div class="anav-section">Integrations</div><div class="anav-item" onclick="window.open(\'/api/qbo-auth\',\'_blank\')">↗ Connect QBO</div>';
+    if(perms.messages) nav += a('messages','Messages <span class="msg-badge" id="nav-msg-badge"></span>');
+  }
+  sidebar.innerHTML = nav;
+
+  // Build bottom nav
+  const bnav = document.getElementById('admin-bnav');
+  const b=(tab,icon,label)=>`<button class="bnav-item" onclick="adminTab('${tab}',null);setBActive(this,'admin-bnav')"><span class="bnav-icon">${icon}</span>${label}</button>`;
+  let btns = '';
+  if(perms.dashboard) btns += b('dashboard','🏠','Dash');
+  if(perms.production) btns += b('production','📦','Prod');
+  if(perms.orders) btns += b('orders','📋','Orders');
+  if(perms.route) btns += b('route','🗺','Route');
+  if(perms.messages) btns += b('messages','💬','Messages');
+  if(perms.ezcater) btns += b('ezcater','🟠','EZCater');
+  bnav.innerHTML = btns;
 }
 function adminTab(tab,btn){
   document.querySelectorAll(".admin-panel").forEach(p=>p.classList.remove("active"));
@@ -1537,6 +1690,11 @@ function renderDashboard(){
   document.getElementById("dash-recent").innerHTML=wo.slice(0,5).map(o=>`<div class="alert-card" style="margin-bottom:6px"><div style="flex:1"><div style="font-weight:700;font-size:13px">${o.clientName}</div><div style="font-size:12px;color:var(--brown-lt)">${fmtDate(new Date(o.deliveryDate+"T12:00:00"))} · $${o.total.toFixed(2)}</div></div><span class="status-chip status-${o.status}">${o.status}</span></div>`).join("")||"<p style='color:var(--brown-lt);font-size:13px;font-style:italic'>No orders this week.</p>";
 }
 function renderProductionSheet(){
+  // If kitchen role, show kitchen-style view with bulk actions
+  if(currentUser?.role === 'kitchen'){
+    renderKitchenInProduction();
+    return;
+  }
   const wo=getWeekOrders(currentWeekOffset),lbl=getWeekLabel(currentWeekOffset);
   document.getElementById("prod-content").innerHTML=`
     <div class="sec-header">
