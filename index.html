@@ -1934,11 +1934,14 @@ async function sendToQBO(){
   const poNum=document.getElementById("po-document")?.querySelector(".po-num")?.textContent;
   const order=ORDERS.find(o=>o.id===poNum);
   if(!order){showToast("Order not found.");btn.textContent=origText;btn.disabled=false;return;}
+  // Add client email to order
+  const client=USERS.find(u=>u.id===order.clientId);
+  const orderWithEmail={...order, clientEmail: client?.email||''};
   try{
     const response=await fetch('/api/qbo-create-po',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({order})
+      body:JSON.stringify({order:orderWithEmail})
     });
     const data=await response.json();
     if(response.ok){
