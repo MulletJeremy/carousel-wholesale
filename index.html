@@ -2348,9 +2348,9 @@ async function generateInviteLink(){
   const dtype=document.getElementById("inv-dtype").value;
   if(!company||!email){showToast("Fill in company name and email.");return;}
   
-  const btn=document.querySelector("#invite-modal .btn-primary");
-  const origText=btn.textContent;
-  btn.textContent="Sending…";btn.disabled=true;
+  const btn=event?.target||document.querySelector("#invite-modal .btn-primary");
+  const origText=btn?.textContent||'Send Invitation';
+  if(btn){btn.textContent="Sending…";btn.disabled=true;}
   
   const token=btoa(JSON.stringify({company,name,email,window:delivWindow,dtype,issued:Date.now()}));
   const link=`${window.location.origin}${window.location.pathname}?invite=${token}`;
@@ -2391,11 +2391,23 @@ async function generateInviteLink(){
       </div>`
     );
     showToast("Invitation sent to "+email+" ✓");
+    // Auto-close after 1.5 seconds
+    setTimeout(()=>{
+      closeModal('invite-modal');
+      // Reset form
+      document.getElementById("inv-company").value="";
+      document.getElementById("inv-name").value="";
+      document.getElementById("inv-email").value="";
+      document.getElementById("invite-link-result").style.display="none";
+    }, 1500);
   }catch(e){
+    console.error('Invite email error:',e);
     showToast("Link generated — email failed. Copy the link manually.");
+    // Still close after 3 seconds even on error
+    setTimeout(()=>closeModal('invite-modal'), 3000);
   }
   
-  btn.textContent=origText;btn.disabled=false;
+  if(btn){btn.textContent=origText;btn.disabled=false;}
 }
 function copyInviteLink(){copyToClipboard(document.getElementById("invite-link-text").textContent);}
 
