@@ -598,6 +598,33 @@ input.qty-val::-webkit-inner-spin-button,input.qty-val::-webkit-outer-spin-butto
 
 
 
+
+<!-- ACCOUNT CREATION MODAL -->
+<div class="modal-wrap" id="account-creation-modal">
+  <div class="modal-card" style="width:440px">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:28px;margin-bottom:8px">🎉</div>
+      <h2 style="font-size:20px;font-weight:700;color:var(--brown)" id="ac-title">Welcome!</h2>
+      <p style="font-size:13px;color:var(--brown-lt);margin-top:4px" id="ac-subtitle">Create your account to get started</p>
+    </div>
+    <div id="ac-info" style="background:var(--gold-pale);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--brown-mid)"></div>
+    <div id="ac-error" style="background:var(--red-pale);color:var(--red);padding:8px 12px;border-radius:7px;font-size:12px;margin-bottom:12px;display:none"></div>
+    <div class="form-field">
+      <label class="form-label">Email</label>
+      <input class="form-input" id="ac-email" type="email" readonly style="background:#F5F0E8;color:var(--brown-mid)">
+    </div>
+    <div class="form-field">
+      <label class="form-label">Create Password</label>
+      <input class="form-input" id="ac-pass" type="password" placeholder="Choose a password (min 6 characters)">
+    </div>
+    <div class="form-field">
+      <label class="form-label">Confirm Password</label>
+      <input class="form-input" id="ac-pass2" type="password" placeholder="Confirm your password">
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="createAccount()">Create My Account →</button>
+  </div>
+</div>
+
 <!-- EDIT CLIENT MODAL -->
 <div class="modal-wrap" id="edit-client-modal">
   <div class="modal-card" style="width:480px">
@@ -2918,7 +2945,14 @@ document.addEventListener("DOMContentLoaded", function(){
   // Check invite token in URL
   try{
     const token=new URLSearchParams(window.location.search).get("invite");
-    if(token){try{const data=JSON.parse(decodeURIComponent(escape(atob(token))));if(data.email) document.getElementById("login-email").value=data.email;}catch(e){const data=JSON.parse(atob(token));if(data.email) document.getElementById("login-email").value=data.email;}}
+    if(token){
+      try{
+        const data=JSON.parse(decodeURIComponent(escape(atob(token))));
+        if(data.email) showAccountCreation(data);
+      }catch(e){
+        try{const data=JSON.parse(atob(token));if(data.email) showAccountCreation(data);}catch(e2){}
+      }
+    }
   }catch(e){}
   // Restore persistent session
   try{
