@@ -188,7 +188,15 @@ button{cursor:pointer;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
 #po-print-area{display:none;position:absolute;inset:0;background:#fff;z-index:300;padding:40px 48px;overflow-y:auto}
 #po-print-area.open{display:block}
 .po-print-actions{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
-@media print{.po-print-actions{display:none!important}body *{visibility:hidden!important}#po-print-area,#po-print-area *{visibility:visible!important}#po-print-area{position:fixed!important;inset:0!important;padding:32px!important}}
+@media print{
+  .po-print-actions{display:none!important}
+  .slip-print-actions{display:none!important}
+}
+@media print{
+  body.printing-po *{visibility:hidden!important}
+  body.printing-po #po-print-area,body.printing-po #po-print-area *{visibility:visible!important}
+  body.printing-po #po-print-area{position:fixed!important;inset:0!important;padding:32px!important}
+}
 .po-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:18px;border-bottom:2px solid #3D2B1F}
 .po-brand h1{font-size:22px;font-weight:800;color:#3D2B1F}.po-brand p{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A07860;margin-top:2px}
 .po-meta-r{text-align:right}.po-num{font-size:20px;font-weight:800;color:#3D2B1F}
@@ -439,7 +447,7 @@ input.qty-val::-webkit-inner-spin-button,input.qty-val::-webkit-outer-spin-butto
           <button class="week-btn" style="background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.6)" onclick="changeWeek(1)">›</button>
         </div>
       </div>
-      <button onclick="window.print()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;font-weight:600">🖨 Print all</button>
+      <button onclick="document.body.classList.remove('printing-po');window.print()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;font-weight:600">🖨 Print all</button>
     </div>
     <div id="kitchen-summary"></div>
     <p style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:10px;font-weight:700">Orders by delivery</p>
@@ -532,7 +540,7 @@ input.qty-val::-webkit-inner-spin-button,input.qty-val::-webkit-outer-spin-butto
     <div class="admin-content">
       <div id="po-print-area">
         <div class="po-print-actions">
-          <button class="btn btn-primary btn-sm" onclick="window.print()">🖨 Print</button>
+          <button class="btn btn-primary btn-sm" onclick="document.body.classList.add('printing-po');window.print();setTimeout(()=>document.body.classList.remove('printing-po'),1000)">🖨 Print</button>
           <button class="btn btn-sm btn-green" onclick="sendToQBO()">↗ QuickBooks</button>
           <button class="btn btn-ghost btn-sm" onclick="closePO()">← Back</button>
         </div>
@@ -1925,8 +1933,9 @@ function printPO(orderId){
       <div><h4>Payment</h4><p>Invoiced 1st & 15th of each month · Net 15 · CC or ACH. 5% late penalty.</p></div>
     </div>`;
   document.getElementById("po-print-area").classList.add("open");
+  document.body.classList.add('printing-po');
 }
-function closePO(){document.getElementById("po-print-area").classList.remove("open");}
+function closePO(){document.getElementById("po-print-area").classList.remove("open");document.body.classList.remove('printing-po');}
 async function sendToQBO(){
   const btn=event.target;
   const origText=btn.textContent;
