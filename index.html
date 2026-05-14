@@ -1193,6 +1193,8 @@ function showKitchen(){
     updateMsgBadges();
   }
 }
+let kitchenSelected = new Set();
+
 function renderKitchen(){
   const wo=getWeekOrders(currentWeekOffset);
   document.getElementById("kitchen-week-label").textContent=getWeekLabel(currentWeekOffset);
@@ -1202,27 +1204,131 @@ function renderKitchen(){
     <div class="k-sum-title">Total à produire — ${getWeekLabel(currentWeekOffset)}</div>
     ${Object.entries(totals).filter(([,v])=>v>0).map(([name,qty])=>`<div class="k-sum-row"><span>${name}</span><span class="k-sum-qty">${qty}</span></div>`).join("")||'<div style="color:rgba(255,255,255,.4);font-size:13px;font-style:italic">No orders this week</div>'}
   </div>`;
+
+  const allIds=wo.map(o=>o.id);
+  document.getElementById("kitchen-orders").innerHTML=`
+    <div style="background:#2A2420;border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid rgba(255,255,255,.08)">
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:rgba(255,255,255,.6);font-weight:600">
+        <input type="checkbox" id="kitchen-select-all" onchange="kitchenSelectAll(this.checked)" style="accent-color:var(--gold);width:15px;height:15px">
+        Select all (${wo.length})
+      </label>
+      <span id="kitchen-sel-count" style="font-size:12px;color:rgba(255,255,255,.35)">${kitchenSelected.size>0?kitchenSelected.size+" selected":""}</span>
+      <div style="margin-left:auto;display:flex;gap:7px;flex-wrap:wrap">
+        <button onclick="kitchenBulkAction('confirmed')" style="background:rgba(90,138,94,.25);border:1px solid rgba(90,138,94,.4);color:#C8DBC9;border-radius:7px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer">✓ Confirm</button>
+        <button onclick="kitchenBulkAction('delivered')" style="background:rgba(59,109,17,.25);border:1px solid rgba(59,109,17,.4);color:#EAF3DE;border-radius:7px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer">📦 Delivered</button>
+        <button onclick="kitchenBulkAction('invoiced')" style="background:rgba(24,95,165,.25);border:1px solid rgba(24,95,165,.4);color:#E6F1FB;border-radius:7px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer">↗ Invoice</button>
+        <button onclick="kitchenPrintSelected()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);border-radius:7px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer">🖨 Print</button>
+      </div>
+    </div>
+    <div id="kitchen-orders-list"></div>`;
+
   const now=new Date(),monday=new Date(now);
   monday.setDate(now.getDate()-now.getDay()+1+(currentWeekOffset*7));
   const days=["Tue","Wed","Thu","Fri","Sat","Sun"].map((name,i)=>{
     const d=new Date(monday);d.setDate(monday.getDate()+1+i);
     return {name,date:d,ds:d.toISOString().split("T")[0]};
   });
-  document.getElementById("kitchen-orders").innerHTML=days.map(day=>{
+
+  document.getElementById("kitchen-orders-list").innerHTML=days.map(day=>{
     const dayOrders=wo.filter(o=>o.deliveryDate===day.ds);
     if(!dayOrders.length) return "";
     return `<p style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px;font-weight:700">${day.name} ${day.date.toLocaleDateString("en-US",{month:"short",day:"numeric"})}</p>
-      ${dayOrders.map(o=>`<div class="kitchen-card">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
-          <div>
-            <div style="font-size:16px;font-weight:700;color:#fff">${o.clientName}</div>
-            <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">${o.deliveryType==="delivery"?"🚚":"🏪"} ${o.deliveryWindow||""} · ${o.id}</div>
+      ${dayOrders.map(o=>`<div class="kitchen-card" id="kcard-${o.id}" style="border-color:${kitchenSelected.has(o.id)?"var(--gold)":"rgba(255,255,255,.08)"}">
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">
+          <input type="checkbox" ${kitchenSelected.has(o.id)?"checked":""} onchange="kitchenToggleSelect('${o.id}',this.checked)" style="accent-color:var(--gold);width:16px;height:16px;margin-top:3px;flex-shrink:0;cursor:pointer">
+          <div style="flex:1">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between">
+              <div>
+                <div style="font-size:15px;font-weight:700;color:#fff">${o.clientName}</div>
+                <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">${o.deliveryType==="delivery"?"🚚":"🏪"} ${o.deliveryWindow||""} · ${o.id}</div>
+                <div style="margin-top:5px"><span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;background:${o.status==="confirmed"?"rgba(90,138,94,.3)":o.status==="delivered"?"rgba(59,109,17,.3)":o.status==="invoiced"?"rgba(24,95,165,.3)":"rgba(255,200,0,.15)"};color:${o.status==="confirmed"?"#C8DBC9":o.status==="delivered"?"#EAF3DE":o.status==="invoiced"?"#E6F1FB":"#FEF3CD"}">${o.status}</span></div>
+              </div>
+              <div style="display:flex;gap:6px;flex-shrink:0">
+                <button class="k-print-btn" onclick="printPOAndOpen('${o.id}')">🖨</button>
+                <button onclick="showSlipModal('${o.id}')" style="background:rgba(196,148,58,.2);border:1px solid rgba(196,148,58,.4);color:#E8C97A;border-radius:8px;padding:7px 10px;font-size:12px;cursor:pointer">📋</button>
+              </div>
+            </div>
           </div>
-          <button class="k-print-btn" onclick="printPO('${o.id}')">🖨 Print</button>
         </div>
-        ${o.items.map(i=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span style="font-size:14px;color:rgba(255,255,255,.9);font-weight:500">${i.name}</span><span style="font-size:28px;font-weight:800;color:#E8C97A">${i.qty}</span></div>`).join("")}
+        ${o.items.map(i=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span style="font-size:13px;color:rgba(255,255,255,.9);font-weight:500">${i.name}</span><span style="font-size:24px;font-weight:800;color:#E8C97A">${i.qty}</span></div>`).join("")}
       </div>`).join("")}`;
   }).join("");
+}
+
+function kitchenToggleSelect(id, checked){
+  if(checked) kitchenSelected.add(id); else kitchenSelected.delete(id);
+  const card=document.getElementById("kcard-"+id);
+  if(card) card.style.borderColor=checked?"var(--gold)":"rgba(255,255,255,.08)";
+  const wo=getWeekOrders(currentWeekOffset);
+  const allChk=document.getElementById("kitchen-select-all");
+  if(allChk) allChk.checked=kitchenSelected.size===wo.length;
+  const countEl=document.getElementById("kitchen-sel-count");
+  if(countEl) countEl.textContent=kitchenSelected.size>0?kitchenSelected.size+" selected":"";
+}
+
+function kitchenSelectAll(checked){
+  const wo=getWeekOrders(currentWeekOffset);
+  kitchenSelected.clear();
+  if(checked) wo.forEach(o=>kitchenSelected.add(o.id));
+  renderKitchen();
+  const allChk=document.getElementById("kitchen-select-all");
+  if(allChk) allChk.checked=checked;
+}
+
+function kitchenBulkAction(status){
+  if(kitchenSelected.size===0){showToast("Select at least one order.");return;}
+  const ids=[...kitchenSelected];
+  ids.forEach(id=>{
+    const o=ORDERS.find(x=>x.id===id);
+    if(o){ o.status=status; dbUpdateOrderStatus(id,status); if(status==="invoiced") createInvoice(id); }
+  });
+  kitchenSelected.clear();
+  renderKitchen();
+  const labels={confirmed:"confirmed ✓",delivered:"marked as delivered ✓",invoiced:"invoices sent ✓"};
+  showToast(ids.length+" order"+(ids.length>1?"s":"")+" "+labels[status]);
+}
+
+function kitchenPrintSelected(){
+  if(kitchenSelected.size===0){showToast("Select at least one order.");return;}
+  const ids=[...kitchenSelected];
+  const poContents=ids.map(id=>{printPO(id);return document.getElementById("po-document").innerHTML;});
+  const win=window.open('','_blank','width=800,height=900');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Orders</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>body{font-family:'DM Sans',sans-serif;padding:32px;color:#1A1612;font-size:13px}
+.po-hdr{display:flex;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #3D2B1F}
+.po-brand h1{font-size:20px;font-weight:800;color:#3D2B1F}.po-brand p{font-size:10px;text-transform:uppercase;color:#A07860}
+.po-meta-r{text-align:right}.po-num{font-size:18px;font-weight:800;color:#3D2B1F}
+.po-lbl{font-size:10px;text-transform:uppercase;color:#A07860;font-weight:700}
+.po-addrs{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:16px}
+.po-addr h3{font-size:10px;text-transform:uppercase;color:#A07860;margin-bottom:4px;font-weight:700}
+.po-addr p{font-size:12px;color:#1A1612;line-height:1.6}
+.po-info{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #E0D8D0;border-radius:6px;overflow:hidden;margin-bottom:16px}
+.po-info-c{padding:8px 12px;border-right:1px solid #E0D8D0}.po-info-c:last-child{border-right:none}
+.po-info-c .lbl{font-size:9px;text-transform:uppercase;color:#A07860;font-weight:700}
+.po-info-c .val{font-size:12px;font-weight:600;color:#1A1612}
+.po-tbl{width:100%;border-collapse:collapse;margin-bottom:16px}
+.po-tbl thead tr{background:#3D2B1F}.po-tbl thead th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;color:#fff}
+.po-tbl thead th:last-child,.po-tbl thead th:nth-child(n+3){text-align:right}
+.po-tbl tbody tr{border-bottom:1px solid #EDE8E2}.po-tbl tbody tr:nth-child(even){background:#FDFAF6}
+.po-tbl tbody td{padding:8px 10px;font-size:12px;color:#1A1612}.po-tbl tbody td:nth-child(n+3){text-align:right}
+.po-tbl .cat-r td{background:#F5F0E8;font-size:9px;font-weight:700;text-transform:uppercase;color:#6B4C3B;padding:4px 10px}
+.po-totals{display:flex;justify-content:flex-end;margin-bottom:16px}
+.po-totals-box{width:220px}
+.po-tr{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #EDE8E2;font-size:12px}
+.po-tr.grand{border-top:2px solid #3D2B1F;border-bottom:none;padding-top:8px;margin-top:3px}
+.po-tr.grand .lbl{font-weight:700;font-size:13px;color:#1A1612}.po-tr.grand .val{font-size:16px;font-weight:800;color:#3D2B1F}
+.po-tr .lbl{color:#6B4C3B}.po-tr .val{font-weight:600;color:#1A1612}
+.po-ftr{border-top:1px solid #EDE8E2;padding-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.po-ftr h4{font-size:9px;text-transform:uppercase;color:#A07860;margin-bottom:4px;font-weight:700}
+.po-ftr p{font-size:11px;color:#6B4C3B;line-height:1.6}
+.page-break{page-break-after:always;margin-bottom:32px}
+@media print{body{padding:20px}}</style></head><body>
+${poContents.map((c,i)=>`<div class="${i<poContents.length-1?"page-break":""}">${c}</div>`).join("")}
+</body></html>`);
+  win.document.close();win.focus();
+  setTimeout(()=>win.print(),500);
+  kitchenSelected.clear();renderKitchen();
 }
 
 // ════════ DRIVER ════════
