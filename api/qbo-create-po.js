@@ -1,9 +1,14 @@
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
-  const supa = require('@supabase/supabase-js').createClient(
-    process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY
-  );
-  const { data: tokenRow } = await supa.from('qbo_tokens').select('*').eq('id',1).single();
+
+  const tokenRes = await fetch(`${process.env.SUPABASE_URL}/rest/v1/qbo_tokens?id=eq.1&limit=1`, {
+    headers: {
+      'apikey': process.env.SUPABASE_SERVICE_KEY,
+      'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
+    }
+  });
+  const tokens = await tokenRes.json();
+  const tokenRow = tokens[0];
   if (!tokenRow) return res.status(401).json({ error: 'Not connected to QuickBooks' });
 
   const { order } = req.body;
@@ -14,23 +19,29 @@ module.exports = async (req, res) => {
     'Accept': 'application/json'
   };
 
-  // 1. Find or create customer
-  const queryRes = await fetch(`${baseUrl}/query?query=SELECT * FROM Customer WHERE DisplayName = '${order.clientName}'&minorversion=65`, { headers });
+  // Find or create customer
+  const queryRes = await fetch(
+    `${baseUrl}/query?query=SELECT * FROM Customer WHERE DisplayName = '${order.clientName.replace("'","\\'")}' &minorversion=65`,
+    { headers }
+  );
   const queryData = await queryRes.json();
   let customerId = queryData.QueryResponse?.Customer?.[0]?.Id;
 
   if (!customerId) {
     const createRes = await fetch(`${baseUrl}/customer?minorversion=65`, {
       method: 'POST', headers,
-      body: JSON.stringify({ DisplayName: order.clientName, BillAddr: { Line1: order.clientAddress } })
+      body: JSON.stringify({
+        DisplayName: order.clientName,
+        BillAddr: { Line1: order.clientAddress || '' }
+      })
     });
     const createData = await createRes.json();
     customerId = createData.Customer?.Id;
   }
 
-  if (!customerId) return res.status(500).json({ error: 'Could not create customer' });
+  if (!customerId) return res.status(500).json({ error: 'Could not create customer in QBO' });
 
-  // 2. Create Invoice
+  // Create Invoice Net 15
   const dueDate = new Date(order.deliveryDate);
   dueDate.setDate(dueDate.getDate() + 15);
 
@@ -38,12 +49,12 @@ module.exports = async (req, res) => {
     CustomerRef: { value: customerId },
     TxnDate: new Date().toISOString().split('T')[0],
     DueDate: dueDate.toISOString().split('T')[0],
-    PrivateNote: `Order ${order.id} — Wholesale`,
+    PrivateNote: `Wholesale Order ${order.id}`,
     Line: [
       ...order.items.map((item, i) => ({
         LineNum: i + 1,
         Description: item.name,
-        Amount: item.price * item.qty,
+        Amount: parseFloat((item.price * item.qty).toFixed(2)),
         DetailType: 'SalesItemLineDetail',
         SalesItemLineDetail: {
           Qty: item.qty,
@@ -56,13 +67,18 @@ module.exports = async (req, res) => {
         Description: 'Delivery fee',
         Amount: order.deliveryFee,
         DetailType: 'SalesItemLineDetail',
-        SalesItemLineDetail: { Qty: 1, UnitPrice: order.deliveryFee, ItemRef: { value: '1', name: 'Services' } }
+        SalesItemLineDetail: {
+          Qty: 1,
+          UnitPrice: order.deliveryFee,
+          ItemRef: { value: '1', name: 'Services' }
+        }
       }] : [])
     ]
   };
 
   const invRes = await fetch(`${baseUrl}/invoice?minorversion=65`, {
-    method: 'POST', headers, body: JSON.stringify(invoice)
+    method: 'POST', headers,
+    body: JSON.stringify(invoice)
   });
   const invData = await invRes.json();
   res.status(invRes.ok ? 200 : 400).json(invData);
