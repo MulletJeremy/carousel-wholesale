@@ -57,25 +57,17 @@ module.exports = async (req, res) => {
     Line: [
       ...order.items.map((item, i) => ({
         LineNum: i + 1,
-        Description: item.name,
+        Description: `${item.name} x${item.qty} @ $${item.price.toFixed(2)}`,
         Amount: parseFloat((item.price * item.qty).toFixed(2)),
-        DetailType: 'SalesItemLineDetail',
-        SalesItemLineDetail: {
-          Qty: item.qty,
-          UnitPrice: item.price,
-          ItemRef: { value: '1', name: 'Services' }
-        }
+        DetailType: 'DescriptionOnly',
+        DescriptionOnlyLineDetail: {}
       })),
       ...(order.deliveryFee > 0 ? [{
         LineNum: order.items.length + 1,
         Description: 'Delivery fee',
         Amount: order.deliveryFee,
-        DetailType: 'SalesItemLineDetail',
-        SalesItemLineDetail: {
-          Qty: 1,
-          UnitPrice: order.deliveryFee,
-          ItemRef: { value: '1', name: 'Services' }
-        }
+        DetailType: 'DescriptionOnly',
+        DescriptionOnlyLineDetail: {}
       }] : [])
     ]
   };
@@ -88,9 +80,10 @@ module.exports = async (req, res) => {
 
   // Send invoice email via QBO
   if (invRes.ok && invData.Invoice?.Id) {
-    await fetch(`${baseUrl}/invoice/${invData.Invoice.Id}/send?sendTo=${encodeURIComponent(customerEmail || order.clientEmail)}&minorversion=65`, {
-      method: 'POST', headers: { ...headers, 'Content-Type': 'application/octet-stream' }
-    });
+    await fetch(
+      `${baseUrl}/invoice/${invData.Invoice.Id}/send?sendTo=${encodeURIComponent(customerEmail || order.clientEmail || '')}&minorversion=65`,
+      { method: 'POST', headers: { ...headers, 'Content-Type': 'application/octet-stream' } }
+    );
   }
 
   res.status(invRes.ok ? 200 : 400).json(invData);
