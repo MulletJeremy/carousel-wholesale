@@ -95,6 +95,11 @@ module.exports = async (req, res) => {
   });
   const invData = await invRes.json();
 
+  // Log full error for debugging
+  if (!invRes.ok) {
+    console.error('QBO Invoice Error:', JSON.stringify(invData, null, 2));
+  }
+
   if (invRes.ok && invData.Invoice?.Id) {
     await fetch(
       `${baseUrl}/invoice/${invData.Invoice.Id}/send?sendTo=${encodeURIComponent(customerEmail)}&minorversion=65`,
