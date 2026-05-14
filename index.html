@@ -540,7 +540,7 @@ input.qty-val::-webkit-inner-spin-button,input.qty-val::-webkit-outer-spin-butto
     <div class="admin-content">
       <div id="po-print-area">
         <div class="po-print-actions">
-          <button class="btn btn-primary btn-sm" onclick="document.body.classList.add('printing-po');window.print();setTimeout(()=>document.body.classList.remove('printing-po'),1000)">🖨 Print</button>
+          <button class="btn btn-primary btn-sm" onclick="printPONewWindow()">🖨 Print</button>
           <button class="btn btn-sm btn-green" onclick="sendToQBO()">↗ QuickBooks</button>
           <button class="btn btn-ghost btn-sm" onclick="closePO()">← Back</button>
         </div>
@@ -1936,6 +1936,61 @@ function printPO(orderId){
   document.body.classList.add('printing-po');
 }
 function closePO(){document.getElementById("po-print-area").classList.remove("open");document.body.classList.remove('printing-po');}
+
+function printPONewWindow(){
+  const poContent = document.getElementById("po-document").innerHTML;
+  const win = window.open('','_blank','width=800,height=900');
+  win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Purchase Order</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  body{font-family:'DM Sans',sans-serif;padding:40px;color:#1A1612;font-size:14px;line-height:1.6}
+  h1{font-family:'Cormorant Garamond',serif}
+  .po-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:18px;border-bottom:2px solid #3D2B1F}
+  .po-brand h1{font-size:22px;font-weight:800;color:#3D2B1F}
+  .po-brand p{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A07860;margin-top:2px}
+  .po-meta-r{text-align:right}
+  .po-num{font-size:20px;font-weight:800;color:#3D2B1F}
+  .po-lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#A07860;margin-bottom:3px;font-weight:700}
+  .po-addrs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px}
+  .po-addr h3{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#A07860;margin-bottom:6px;font-weight:700}
+  .po-addr p{font-size:13px;color:#1A1612;line-height:1.7}
+  .po-info{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #E0D8D0;border-radius:8px;overflow:hidden;margin-bottom:18px}
+  .po-info-c{padding:10px 14px;border-right:1px solid #E0D8D0}
+  .po-info-c:last-child{border-right:none}
+  .po-info-c .lbl{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#A07860;margin-bottom:3px;font-weight:700}
+  .po-info-c .val{font-size:13px;font-weight:600;color:#1A1612}
+  .po-tbl{width:100%;border-collapse:collapse;margin-bottom:18px}
+  .po-tbl thead tr{background:#3D2B1F}
+  .po-tbl thead th{padding:10px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#fff}
+  .po-tbl thead th:last-child,.po-tbl thead th:nth-child(n+3){text-align:right}
+  .po-tbl tbody tr{border-bottom:1px solid #EDE8E2}
+  .po-tbl tbody tr:nth-child(even){background:#FDFAF6}
+  .po-tbl tbody td{padding:10px 12px;font-size:13px;color:#1A1612}
+  .po-tbl tbody td:nth-child(n+3){text-align:right}
+  .po-tbl .cat-r td{background:#F5F0E8;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6B4C3B;padding:5px 12px}
+  .po-totals{display:flex;justify-content:flex-end;margin-bottom:20px}
+  .po-totals-box{width:240px}
+  .po-tr{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #EDE8E2;font-size:13px}
+  .po-tr.grand{border-top:2px solid #3D2B1F;border-bottom:none;padding-top:10px;margin-top:4px}
+  .po-tr.grand .lbl{font-weight:700;font-size:14px;color:#1A1612}
+  .po-tr.grand .val{font-size:18px;font-weight:800;color:#3D2B1F}
+  .po-tr .lbl{color:#6B4C3B}.po-tr .val{font-weight:600;color:#1A1612}
+  .po-ftr{border-top:1px solid #EDE8E2;padding-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .po-ftr h4{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#A07860;margin-bottom:6px;font-weight:700}
+  .po-ftr p{font-size:12px;color:#6B4C3B;line-height:1.7}
+  @media print{body{padding:20px}}
+</style>
+</head>
+<body>${poContent}</body>
+</html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(()=>win.print(),500);
+}
 async function sendToQBO(){
   const btn=event.target;
   const origText=btn.textContent;
@@ -2073,6 +2128,11 @@ async function sendBroadcast(){
   document.getElementById("bc-message").value="";
   broadcastSelected=[];
   if(broadcastMode==="select") document.querySelectorAll("#bc-client-list input").forEach(cb=>cb.checked=false);
+}
+
+function printPOAndOpen(orderId){
+  printPO(orderId);
+  setTimeout(()=>printPONewWindow(),100);
 }
 
 // ════════ HELPERS ════════
