@@ -19,6 +19,15 @@ module.exports = async (req, res) => {
     'Accept': 'application/json'
   };
 
+  // Find item ID
+  const itemRes = await fetch(
+    `${baseUrl}/query?query=SELECT * FROM Item WHERE Name = 'Wholesale Products'&minorversion=65`,
+    { headers }
+  );
+  const itemData = await itemRes.json();
+  const itemId = itemData.QueryResponse?.Item?.[0]?.Id;
+  if (!itemId) return res.status(500).json({ error: 'Item "Wholesale Products" not found in QBO' });
+
   // Find or create customer
   const queryRes = await fetch(
     `${baseUrl}/query?query=SELECT * FROM Customer WHERE DisplayName = '${order.clientName.replace("'", "\\'")}' &minorversion=65`,
@@ -26,7 +35,7 @@ module.exports = async (req, res) => {
   );
   const queryData = await queryRes.json();
   let customerId = queryData.QueryResponse?.Customer?.[0]?.Id;
-  let customerEmail = queryData.QueryResponse?.Customer?.[0]?.PrimaryEmailAddr?.Address;
+  let customerEmail = queryData.QueryResponse?.Customer?.[0]?.PrimaryEmailAddr?.Address || order.clientEmail || '';
 
   if (!customerId) {
     const createRes = await fetch(`${baseUrl}/customer?minorversion=65`, {
@@ -39,7 +48,7 @@ module.exports = async (req, res) => {
     });
     const createData = await createRes.json();
     customerId = createData.Customer?.Id;
-    customerEmail = order.clientEmail;
+    customerEmail = order.clientEmail || '';
   }
 
   if (!customerId) return res.status(500).json({ error: 'Could not create customer in QBO' });
@@ -52,22 +61,30 @@ module.exports = async (req, res) => {
     TxnDate: new Date().toISOString().split('T')[0],
     DueDate: dueDate.toISOString().split('T')[0],
     PrivateNote: `Wholesale Order ${order.id}`,
-    BillEmail: { Address: customerEmail || order.clientEmail || '' },
+    BillEmail: { Address: customerEmail },
     EmailStatus: 'NeedToSend',
     Line: [
       ...order.items.map((item, i) => ({
         LineNum: i + 1,
-        Description: `${item.name} x${item.qty} @ $${item.price.toFixed(2)}`,
+        Description: `${item.name}`,
         Amount: parseFloat((item.price * item.qty).toFixed(2)),
-        DetailType: 'DescriptionOnly',
-        DescriptionOnlyLineDetail: {}
+        DetailType: 'SalesItemLineDetail',
+        SalesItemLineDetail: {
+          ItemRef: { value: itemId, name: 'Wholesale Products' },
+          Qty: item.qty,
+          UnitPrice: item.price
+        }
       })),
       ...(order.deliveryFee > 0 ? [{
         LineNum: order.items.length + 1,
         Description: 'Delivery fee',
         Amount: order.deliveryFee,
-        DetailType: 'DescriptionOnly',
-        DescriptionOnlyLineDetail: {}
+        DetailType: 'SalesItemLineDetail',
+        SalesItemLineDetail: {
+          ItemRef: { value: itemId, name: 'Wholesale Products' },
+          Qty: 1,
+          UnitPrice: order.deliveryFee
+        }
       }] : [])
     ]
   };
@@ -78,10 +95,9 @@ module.exports = async (req, res) => {
   });
   const invData = await invRes.json();
 
-  // Send invoice email via QBO
   if (invRes.ok && invData.Invoice?.Id) {
     await fetch(
-      `${baseUrl}/invoice/${invData.Invoice.Id}/send?sendTo=${encodeURIComponent(customerEmail || order.clientEmail || '')}&minorversion=65`,
+      `${baseUrl}/invoice/${invData.Invoice.Id}/send?sendTo=${encodeURIComponent(customerEmail)}&minorversion=65`,
       { method: 'POST', headers: { ...headers, 'Content-Type': 'application/octet-stream' } }
     );
   }
