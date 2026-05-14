@@ -2391,7 +2391,8 @@ async function generateInviteLink(){
   const origText=btn?.textContent||'Send Invitation';
   if(btn){btn.textContent="Sending…";btn.disabled=true;}
   
-  const token=btoa(JSON.stringify({company,name,email,window:delivWindow,dtype,issued:Date.now()}));
+  const tokenData=JSON.stringify({company,name,email,window:delivWindow,dtype,issued:Date.now()});
+  const token=btoa(unescape(encodeURIComponent(tokenData)));
   const link=`${window.location.origin}${window.location.pathname}?invite=${token}`;
   
   // Show the link
@@ -2880,12 +2881,44 @@ function showCutoffBanner(){
 }
 
 // ════════ INIT ════════
+
+function checkResetToken(){
+  try{
+    const token = new URLSearchParams(window.location.search).get('reset');
+    if(!token) return;
+    const data = JSON.parse(decodeURIComponent(escape(atob(token))));
+    if(Date.now() > data.exp){showToast('Reset link expired.');return;}
+    const modal = document.createElement('div');
+    modal.style.cssText='position:fixed;inset:0;background:rgba(26,22,18,.55);display:flex;align-items:center;justify-content:center;z-index:300;padding:16px';
+    modal.innerHTML=`<div style="background:var(--warm);border-radius:var(--radius-lg);padding:28px;width:360px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+      <h2 style="font-size:18px;font-weight:700;color:var(--brown);margin-bottom:6px">Set New Password</h2>
+      <p style="font-size:13px;color:var(--brown-lt);margin-bottom:16px">For: <strong>${data.email}</strong></p>
+      <div id="reset-error" style="background:var(--red-pale);color:var(--red);padding:8px 12px;border-radius:7px;font-size:12px;margin-bottom:12px;display:none"></div>
+      <div class="form-field"><label class="form-label">New Password</label><input class="form-input" id="reset-new-pass" type="password" placeholder="New password"></div>
+      <div class="form-field"><label class="form-label">Confirm Password</label><input class="form-input" id="reset-confirm-pass" type="password" placeholder="Confirm new password"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="applyPasswordReset('${data.email}',this.parentElement)">Update Password</button>
+    </div>`;
+    document.body.appendChild(modal);
+  }catch(e){ console.warn('Reset token error:',e); }
+}
+
+function applyPasswordReset(email, container){
+  const newPass = document.getElementById('reset-new-pass').value;
+  const confirmPass = document.getElementById('reset-confirm-pass').value;
+  const errEl = document.getElementById('reset-error');
+  errEl.style.display='none';
+  if(newPass.length < 6){errEl.textContent='Password must be at least 6 characters.';errEl.style.display='block';return;}
+  if(newPass !== confirmPass){errEl.textContent='Passwords do not match.';errEl.style.display='block';return;}
+  const user = USERS.find(u=>u.email.toLowerCase()===email.toLowerCase());
+  if(user){ user.pass = newPass; container.remove(); showToast('Password updated! Please sign in.'); window.history.replaceState({}, '', window.location.pathname); }
+}
+
 document.addEventListener("DOMContentLoaded", function(){
   checkResetToken();
   // Check invite token in URL
   try{
     const token=new URLSearchParams(window.location.search).get("invite");
-    if(token){const data=JSON.parse(atob(token));if(data.email) document.getElementById("login-email").value=data.email;}
+    if(token){try{const data=JSON.parse(decodeURIComponent(escape(atob(token))));if(data.email) document.getElementById("login-email").value=data.email;}catch(e){const data=JSON.parse(atob(token));if(data.email) document.getElementById("login-email").value=data.email;}}
   }catch(e){}
   // Restore persistent session
   try{
