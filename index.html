@@ -597,6 +597,45 @@ input.qty-val::-webkit-inner-spin-button,input.qty-val::-webkit-outer-spin-butto
 
 
 
+
+<!-- EDIT CLIENT MODAL -->
+<div class="modal-wrap" id="edit-client-modal">
+  <div class="modal-card" style="width:480px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <h2 style="font-size:18px;font-weight:700;color:var(--brown)">Edit Client</h2>
+      <button onclick="closeModal('edit-client-modal')" style="background:none;border:none;font-size:22px;color:var(--brown-lt);cursor:pointer">×</button>
+    </div>
+    <div class="form-field"><label class="form-label">Company name</label><input class="form-input" id="ec-company" type="text"></div>
+    <div class="form-field"><label class="form-label">Contact name</label><input class="form-input" id="ec-name" type="text"></div>
+    <div class="form-field"><label class="form-label">Email</label><input class="form-input" id="ec-email" type="email"></div>
+    <div class="form-field"><label class="form-label">Address</label><input class="form-input" id="ec-address" type="text" placeholder="123 Market St, San Francisco, CA"></div>
+    <div class="form-field"><label class="form-label">Delivery type</label>
+      <select class="form-input" id="ec-dtype">
+        <option value="delivery">Delivery</option>
+        <option value="pickup">Pickup</option>
+      </select>
+    </div>
+    <div class="form-field"><label class="form-label">Preferred delivery window</label>
+      <select class="form-input" id="ec-window">
+        <option>6:00–8:00 AM (early)</option>
+        <option>7:00–9:00 AM (standard)</option>
+        <option>8:00–10:00 AM (late morning)</option>
+        <option>TBD</option>
+      </select>
+    </div>
+    <div class="form-field">
+      <label class="form-label">Delivery days</label>
+      <div id="ec-days" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
+    </div>
+    <div class="form-field"><label class="form-label">Password (leave blank to keep current)</label><input class="form-input" id="ec-pass" type="text" placeholder="New password…"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="saveClientEdit()">Save Changes</button>
+      <button class="btn btn-sm" style="background:var(--red-pale);color:var(--red);border:1px solid var(--red-pale);border-radius:8px;padding:10px 16px;font-weight:600" onclick="deleteClient()">Delete Client</button>
+      <button class="btn btn-ghost" onclick="closeModal('edit-client-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- FORGOT PASSWORD MODAL -->
 <div class="modal-wrap" id="forgot-modal">
   <div class="modal-card" style="max-width:380px">
@@ -2040,7 +2079,7 @@ function renderClientsPanel(){
         </div>
         <div style="font-size:11px;font-weight:600;color:var(--brown-mid);margin-bottom:8px">📅 ${c.deliveryDays.map(d=>DAY_NAMES[d]).join(" · ")}</div>
         <div style="font-size:12px;color:var(--brown-lt);margin-bottom:10px">📦 ${ORDERS.filter(o=>o.clientId===c.id).length} total orders</div>
-        <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center">Edit</button><button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" onclick="showToast('Invite link copied for ${c.company} ✓')">📋 Invite</button></div>
+        <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" onclick="editClient('${c.id}')">Edit</button><button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" onclick="showToast('Invite link copied for ${c.company} ✓')">📋 Invite</button></div>
       </div>`).join("")}
     </div>`;
 }
