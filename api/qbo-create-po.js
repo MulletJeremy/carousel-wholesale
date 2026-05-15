@@ -101,8 +101,7 @@ module.exports = async (req, res) => {
     TxnDate: new Date().toISOString().split('T')[0],
     DueDate: dueDate.toISOString().split('T')[0],
     PrivateNote: `Wholesale Order ${order.id}`,
-    BillEmail: { Address: customerEmail },
-    EmailStatus: 'NeedToSend',
+    ...(customerEmail ? { BillEmail: { Address: customerEmail }, EmailStatus: 'NeedToSend' } : {}),
     Line: [
       ...order.items.map((item, i) => ({
         LineNum: i + 1,
@@ -139,7 +138,7 @@ module.exports = async (req, res) => {
     console.error('QBO Invoice Error:', JSON.stringify(invData, null, 2));
   }
 
-  if (invRes.ok && invData.Invoice?.Id) {
+  if (invRes.ok && invData.Invoice?.Id && customerEmail) {
     await fetch(
       `${baseUrl}/invoice/${invData.Invoice.Id}/send?sendTo=${encodeURIComponent(customerEmail)}&minorversion=65`,
       { method: 'POST', headers: { ...headers, 'Content-Type': 'application/octet-stream' } }
