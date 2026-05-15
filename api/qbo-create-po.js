@@ -8,8 +8,47 @@ module.exports = async (req, res) => {
     }
   });
   const tokens = await tokenRes.json();
-  const tokenRow = tokens[0];
+  let tokenRow = tokens[0];
   if (!tokenRow) return res.status(401).json({ error: 'Not connected to QuickBooks' });
+
+  // Refresh access token if expired or expiring within 60 seconds
+  if (!tokenRow.expires_at || new Date(tokenRow.expires_at) <= new Date(Date.now() + 60 * 1000)) {
+    const creds = Buffer.from(`${process.env.QBO_CLIENT_ID}:${process.env.QBO_CLIENT_SECRET}`).toString('base64');
+    const refreshRes = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${creds}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: tokenRow.refresh_token
+      })
+    });
+    const refreshed = await refreshRes.json();
+    if (!refreshed.access_token) {
+      return res.status(401).json({ error: 'QuickBooks token refresh failed', detail: refreshed });
+    }
+    tokenRow = {
+      ...tokenRow,
+      access_token: refreshed.access_token,
+      refresh_token: refreshed.refresh_token || tokenRow.refresh_token,
+      expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString()
+    };
+    await fetch(`${process.env.SUPABASE_URL}/rest/v1/qbo_tokens?id=eq.1`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': process.env.SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        access_token: tokenRow.access_token,
+        refresh_token: tokenRow.refresh_token,
+        expires_at: tokenRow.expires_at
+      })
+    });
+  }
 
   const { order } = req.body;
   const baseUrl = `https://quickbooks.api.intuit.com/v3/company/${tokenRow.realm_id}`;
@@ -21,7 +60,7 @@ module.exports = async (req, res) => {
 
   // Find item ID
   const itemRes = await fetch(
-    `${baseUrl}/query?query=SELECT * FROM Item WHERE Name = 'Wholesale Products'&minorversion=65`,
+    `${baseUrl}/query?query=${encodeURIComponent("SELECT * FROM Item WHERE Name = 'Wholesale Products'")}&minorversion=65`,
     { headers }
   );
   const itemData = await itemRes.json();
@@ -29,8 +68,9 @@ module.exports = async (req, res) => {
   if (!itemId) return res.status(500).json({ error: 'Item "Wholesale Products" not found in QBO' });
 
   // Find or create customer
+  const safeName = order.clientName.replace(/'/g, "''");
   const queryRes = await fetch(
-    `${baseUrl}/query?query=SELECT * FROM Customer WHERE DisplayName = '${order.clientName.replace("'", "\\'")}' &minorversion=65`,
+    `${baseUrl}/query?query=${encodeURIComponent(`SELECT * FROM Customer WHERE DisplayName = '${safeName}'`)}&minorversion=65`,
     { headers }
   );
   const queryData = await queryRes.json();
@@ -95,7 +135,6 @@ module.exports = async (req, res) => {
   });
   const invData = await invRes.json();
 
-  // Log full error for debugging
   if (!invRes.ok) {
     console.error('QBO Invoice Error:', JSON.stringify(invData, null, 2));
   }
