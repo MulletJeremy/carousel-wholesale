@@ -571,6 +571,27 @@ input.qty-val::-webkit-inner-spin-button,input.qty-val::-webkit-outer-spin-butto
   <div class="mob-pad"></div>
 </div>
 
+<!-- EDIT ORDER MODAL -->
+<div class="modal-wrap" id="edit-order-modal">
+  <div class="modal-card" style="width:520px;max-width:100%">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <h2 class="modal-title" style="text-align:left;margin:0">Modifier la commande</h2>
+      <button onclick="closeModal('edit-order-modal')" style="background:none;border:none;font-size:22px;color:var(--brown-lt);cursor:pointer">×</button>
+    </div>
+    <p class="modal-sub" id="edit-order-subtitle" style="text-align:left;margin-bottom:14px"></p>
+    <div id="edit-order-items" style="max-height:380px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:10px 12px"></div>
+    <div class="divider"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <span style="font-size:13px;color:var(--brown-lt)">Sous-total</span>
+      <span style="font-weight:700;font-size:15px;color:var(--brown)" id="edit-order-subtotal">$0.00</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="saveEditedOrder()">Enregistrer</button>
+      <button class="btn btn-ghost" onclick="closeModal('edit-order-modal')">Annuler</button>
+    </div>
+  </div>
+</div>
+
 <!-- INVITE MODAL -->
 <div class="modal-wrap" id="invite-modal">
   <div class="modal-card">
@@ -815,6 +836,44 @@ async function dbSaveMessage(msg){
 }
 
 // ════════════════════════════════
+// AUTH HELPERS
+// ════════════════════════════════
+async function loadProfile(userId, email){
+  try{
+    const {data}=await supa.from('profiles').select('*').eq('id',userId).single();
+    if(!data) return null;
+    return {
+      id:userId, supaId:userId,
+      name:data.name||data.company, role:data.role||'client',
+      email:email||data.email, company:data.company,
+      address:data.address||'', deliveryType:data.delivery_type||'delivery',
+      deliveryDays:data.delivery_days||[2,3,4,5,6],
+      deliveryWindow:data.delivery_window||'7:00–9:00 AM',
+      canMessage:data.can_message!==false, label:data.label||data.company
+    };
+  }catch(e){ return null; }
+}
+
+async function loadProfiles(){
+  try{
+    const {data}=await supa.from('profiles').select('*');
+    if(data) data.forEach(p=>{
+      if(!USERS.find(u=>u.id===p.id)){
+        USERS.push({
+          id:p.id, supaId:p.id,
+          name:p.name||p.company, role:p.role||'client',
+          email:p.email, company:p.company,
+          address:p.address||'', deliveryType:p.delivery_type||'delivery',
+          deliveryDays:p.delivery_days||[2,3,4,5,6],
+          deliveryWindow:p.delivery_window||'7:00–9:00 AM',
+          canMessage:p.can_message!==false, label:p.label||p.company
+        });
+      }
+    });
+  }catch(e){ console.warn('loadProfiles failed:',e); }
+}
+
+// ════════════════════════════════
 // EMAIL HELPERS
 // ════════════════════════════════
 async function sendEmail(to, subject, html){
@@ -1028,12 +1087,22 @@ function canDo(action){
 
 // ════════ AUTH ════════
 // Demo pills removed — invitation-only access
-function doLogin(){
+async function doLogin(){
   const email=document.getElementById("login-email").value.trim().toLowerCase();
   const pass=document.getElementById("login-password").value;
+  const errEl=document.getElementById("login-error");
+  errEl.style.display="none";
+
+  // Try Supabase Auth first (client accounts)
+  const {data,error}=await supa.auth.signInWithPassword({email,password:pass});
+  if(!error&&data.user){
+    const profile=await loadProfile(data.user.id,email);
+    if(profile){currentUser=profile;launchUser(profile);return;}
+  }
+
+  // Fallback: hardcoded staff users (kitchen, drivers, sales, CEO)
   const user=USERS.find(u=>u.email.toLowerCase()===email&&u.pass===pass);
-  if(!user){document.getElementById("login-error").style.display="block";return;}
-  document.getElementById("login-error").style.display="none";
+  if(!user){errEl.style.display="block";return;}
   currentUser=user;
   const stayIn=document.getElementById("stay-signed-in")?.checked;
   if(stayIn) try{localStorage.setItem("carousel_session",JSON.stringify({id:user.id,ts:Date.now()}));}catch(e){}
@@ -1041,6 +1110,7 @@ function doLogin(){
 }
 async function launchUser(user){
   await Promise.all([dbLoadOrders(), dbLoadMessages()]);
+  if(user.role!=="client"&&user.role!=="driver") await loadProfiles();
   if(user.role==="client"){
     showClient();
     renderClientMessages();
@@ -1050,12 +1120,13 @@ async function launchUser(user){
   }
 }
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.getElementById("view-login").classList.contains("active"))doLogin();});
-function doLogout(){
+async function doLogout(){
   currentUser=null;cart={};selDelivDate=null;
   try{localStorage.removeItem("carousel_session");}catch(e){}
+  await supa.auth.signOut().catch(()=>{});
   showView("view-login");
 }
-function showView(id){document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.getElementById(id).classList.add("active");}
+function showView(id){closePO();document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.getElementById(id).classList.add("active");}
 
 // ════════ CLIENT ════════
 function showClient(){
@@ -1729,8 +1800,8 @@ function buildStaffNav(){
   }
   if(perms.orders || perms.upcoming || perms.ezcater){
     nav += '<div class="anav-section">Orders</div>';
-    if(perms.orders) nav += a('orders','All Orders');
-    if(perms.upcoming) nav += a('upcoming','Upcoming');
+    if(perms.orders) nav += a('orders','Orders (by week)');
+    if(perms.upcoming) nav += a('upcoming','Next Deliveries');
     if(perms.ezcater) nav += a('ezcater','🟠 EZCater');
   }
   if(perms.route){
@@ -1759,6 +1830,7 @@ function buildStaffNav(){
   bnav.innerHTML = btns;
 }
 function adminTab(tab,btn){
+  closePO();
   document.querySelectorAll(".admin-panel").forEach(p=>p.classList.remove("active"));
   document.querySelectorAll(".anav-item").forEach(b=>b.classList.remove("active"));
   const panel=document.getElementById("apanel-"+tab);if(panel) panel.classList.add("active");
@@ -1835,7 +1907,7 @@ function renderOrdersPanel(){
   const orders=getWeekOrders(currentWeekOffset),lbl=getWeekLabel(currentWeekOffset);
   document.getElementById("orders-content").innerHTML=`
     <div class="sec-header">
-      <h2 class="sec-title">All Orders</h2>
+      <div><h2 class="sec-title">Orders — by Week</h2><div style="font-size:11px;color:var(--brown-lt);margin-top:2px">Naviguez semaine par semaine · toutes les commandes</div></div>
       <div class="week-nav">
         <button class="week-btn" onclick="changeWeek(-1);renderOrdersPanel()">‹</button>
         <span class="week-label" style="font-size:13px">${lbl}</span>
@@ -1855,6 +1927,7 @@ function renderOrdersPanel(){
         <td><span class="status-chip status-${o.status}">${o.status}</span></td>
         <td><div style="display:flex;gap:5px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="printPO('${o.id}')">🖨 PO</button>
+          ${canDo('canEdit')?`<button class="btn btn-ghost btn-sm" onclick="editOrder('${o.id}')">✏️ Edit</button>`:""}
           ${o.status==="en attente"?`<button class="btn btn-ghost btn-sm" onclick="confirmOrder('${o.id}')">Confirm</button>`:""}
           ${o.status==="confirmée"?`<button class="btn btn-ghost btn-sm" onclick="markLivré('${o.id}')">Delivered</button>`:""}
           ${o.status==="livrée"?`<button class="btn btn-green btn-sm" onclick="createInvoice('${o.id}')">↗ Invoice</button>`:""}
@@ -1862,6 +1935,79 @@ function renderOrdersPanel(){
       </tr>`).join("")||`<tr><td colspan="8" style="text-align:center;color:var(--brown-lt);padding:24px;font-style:italic">No orders this week.</td></tr>`}
       </tbody>
     </table></div>`;
+}
+
+// ════════ EDIT ORDER ════════
+let editingOrderId=null, editCart={};
+
+function editOrder(id){
+  const o=ORDERS.find(x=>x.id===id);
+  if(!o) return;
+  editingOrderId=id;
+  editCart={};
+  o.items.forEach(i=>{ editCart[i.sku]=i.qty; });
+  document.getElementById('edit-order-subtitle').textContent=`${o.clientName} · ${o.id} · Livraison: ${fmtDate(new Date(o.deliveryDate+"T12:00:00"))}`;
+  renderEditOrderItems();
+  document.getElementById('edit-order-modal').classList.add('open');
+}
+
+function renderEditOrderItems(){
+  document.getElementById('edit-order-items').innerHTML=CATALOG.map(section=>`
+    <div style="margin-bottom:10px">
+      <div class="cat-title">${section.name}</div>
+      ${section.items.map(item=>{
+        const qty=editCart[item.sku]||0;
+        return `<div class="prod-row">
+          <div style="flex:1"><div style="font-weight:600;font-size:13px">${item.name}</div><div style="font-size:11px;color:var(--brown-lt)">$${item.price.toFixed(2)}</div></div>
+          <div class="qty-ctrl">
+            <button class="qty-btn" onclick="changeEditQty(${item.sku},-1)">−</button>
+            <span class="qty-val" id="eqty-${item.sku}">${qty}</span>
+            <button class="qty-btn" onclick="changeEditQty(${item.sku},1)">+</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+  updateEditSubtotal();
+}
+
+function changeEditQty(sku,delta){
+  const item=CATALOG.flatMap(s=>s.items).find(i=>i.sku===sku);
+  if(!item) return;
+  let nv=(editCart[sku]||0)+delta;
+  if(nv<0) nv=0;
+  if(nv===0) delete editCart[sku]; else editCart[sku]=nv;
+  const el=document.getElementById('eqty-'+sku);
+  if(el) el.textContent=nv;
+  updateEditSubtotal();
+}
+
+function updateEditSubtotal(){
+  const allItems=CATALOG.flatMap(s=>s.items);
+  const sub=Object.entries(editCart).reduce((s,[sku,qty])=>{
+    const item=allItems.find(i=>i.sku==sku);
+    return s+(item?item.price*qty:0);
+  },0);
+  const el=document.getElementById('edit-order-subtotal');
+  if(el) el.textContent='$'+sub.toFixed(2);
+}
+
+async function saveEditedOrder(){
+  const o=ORDERS.find(x=>x.id===editingOrderId);
+  if(!o) return;
+  const allItems=CATALOG.flatMap(s=>s.items);
+  const lines=Object.entries(editCart).map(([sku,qty])=>{
+    const item=allItems.find(i=>i.sku==sku);
+    return item?{sku:parseInt(sku),name:item.name,qty,price:item.price}:null;
+  }).filter(Boolean);
+  if(!lines.length){showToast("La commande doit avoir au moins un article.");return;}
+  const subtotal=lines.reduce((s,l)=>s+l.price*l.qty,0);
+  o.items=lines;
+  o.subtotal=parseFloat(subtotal.toFixed(2));
+  o.total=parseFloat((subtotal+o.deliveryFee).toFixed(2));
+  await dbSaveOrder(o);
+  closeModal('edit-order-modal');
+  renderOrdersPanel();
+  showToast("Commande "+o.id+" mise à jour ✓");
 }
 
 // ════════ ORDERS BULK SELECT ════════
@@ -1925,13 +2071,30 @@ function ordersBulkPrint(){
 
 function confirmOrder(id){const o=ORDERS.find(x=>x.id===id);if(o){o.status="confirmée";dbUpdateOrderStatus(id,'confirmée');renderOrdersPanel();renderDashboard();showToast("Order "+id+" confirmée ✓");}}
 function markLivré(id){const o=ORDERS.find(x=>x.id===id);if(o){o.status="livrée";dbUpdateOrderStatus(id,'livrée');renderOrdersPanel();showToast("Marked as livrée");}}
-function createInvoice(id){
+async function createInvoice(id){
   const o=ORDERS.find(x=>x.id===id);
   if(o){
     o.status="facturée";
     dbUpdateOrderStatus(id,'facturée');
     renderOrdersPanel();
-    showToast("↗ Invoice created in QuickBooks for "+o.clientName);
+    // Send to QuickBooks
+    try{
+      const client=USERS.find(u=>u.id===o.clientId);
+      const orderWithEmail={...o, clientEmail:client?.email||''};
+      const response=await fetch('/api/qbo-create-po',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({order:orderWithEmail})
+      });
+      const data=await response.json();
+      if(response.ok){
+        showToast("✓ Facture créée dans QuickBooks pour "+o.clientName);
+      } else {
+        showToast("Statut mis à jour — erreur QBO: "+(data.Fault?.Error?.[0]?.Message||data.error||"Vérifier la connexion QBO"));
+      }
+    }catch(e){
+      showToast("Statut mis à jour — QBO non joignable");
+    }
     // Envoyer invoice notification email to client
     const client=USERS.find(u=>u.id===o.clientId);
     if(client?.email){
@@ -1990,7 +2153,7 @@ function renderUpcomingPanel(){
   const now=new Date();
   const upcoming=ORDERS.filter(o=>new Date(o.deliveryDate+"T12:00:00")>=now).sort((a,b)=>new Date(a.deliveryDate)-new Date(b.deliveryDate));
   document.getElementById("upcoming-content").innerHTML=`
-    <h2 class="sec-title" style="margin-bottom:18px">Upcoming Orders</h2>
+    <div style="margin-bottom:18px"><h2 class="sec-title">Next Deliveries</h2><div style="font-size:11px;color:var(--brown-lt);margin-top:2px">Toutes les commandes à livrer à partir d'aujourd'hui, dans l'ordre chronologique</div></div>
     ${upcoming.length?upcoming.map(o=>{
       const d=new Date(o.deliveryDate+"T12:00:00"),dow=d.getDay(),cutoff=CUTOFFS[dow];
       const deadline=cutoff?getDeadline(d,cutoff):null,hoursLeft=deadline?(deadline-now)/3600000:null;
@@ -2521,7 +2684,7 @@ function printPO(orderId){
   document.getElementById("po-print-area").classList.add("open");
   document.body.classList.add('printing-po');
 }
-function closePO(){document.getElementById("po-print-area").classList.remove("open");document.body.classList.remove('printing-po');}
+function closePO(){const el=document.getElementById("po-print-area");if(el)el.classList.remove("open");document.body.classList.remove('printing-po');}
 
 function printPONewWindow(){
   const poContent = document.getElementById("po-document").innerHTML;
@@ -2960,42 +3123,57 @@ function showAccountCreation(data){
   modal.classList.add('open');
 }
 
-function createAccount(){
+async function createAccount(){
   const pass = document.getElementById('ac-pass').value;
   const pass2 = document.getElementById('ac-pass2').value;
   const errEl = document.getElementById('ac-error');
   errEl.style.display='none';
-  if(pass.length < 6){errEl.textContent='Password must be at least 6 characters.';errEl.style.display='block';return;}
-  if(pass !== pass2){errEl.textContent='Passwords do not match.';errEl.style.display='block';return;}
+  if(pass.length < 8){errEl.textContent='Le mot de passe doit contenir au moins 8 caractères.';errEl.style.display='block';return;}
+  if(pass !== pass2){errEl.textContent='Les mots de passe ne correspondent pas.';errEl.style.display='block';return;}
   if(!pendingInviteData) return;
-  const data = pendingInviteData;
-  const existing = USERS.find(u=>u.email.toLowerCase()===data.email.toLowerCase());
-  if(existing){
-    existing.pass = pass;
-    closeModal('account-creation-modal');
-    currentUser = existing;
-    launchUser(existing);
-    window.history.replaceState({}, '', window.location.pathname);
+  const inv = pendingInviteData;
+
+  const btn=document.querySelector('#account-creation-modal .btn-primary');
+  if(btn){btn.textContent='Création…';btn.disabled=true;}
+
+  // Create Supabase Auth account
+  const {data:authData,error}=await supa.auth.signUp({email:inv.email,password:pass});
+  if(error){
+    errEl.textContent=error.message;errEl.style.display='block';
+    if(btn){btn.textContent='Create My Account →';btn.disabled=false;}
     return;
   }
-  const id = 'client-'+Date.now();
-  const newUser = {
-    id, name: data.name||data.company, role: 'client',
-    email: data.email, pass: pass, company: data.company,
-    address: '', deliveryType: data.dtype||'delivery',
-    deliveryDays: [2,3,4,5,6],
-    deliveryWindow: data.window||'7:00–9:00 AM',
-    label: data.company, canMessage: true
+
+  // Save profile to Supabase
+  await supa.from('profiles').upsert({
+    id:authData.user.id, email:inv.email,
+    role:'client', name:inv.name||inv.company,
+    company:inv.company, address:inv.address||'',
+    delivery_type:inv.dtype||'delivery',
+    delivery_days:inv.days||[2,3,4,5,6],
+    delivery_window:inv.window||'7:00–9:00 AM',
+    can_message:true, label:inv.company
+  });
+
+  const newUser={
+    id:authData.user.id, supaId:authData.user.id,
+    name:inv.name||inv.company, role:'client',
+    email:inv.email, company:inv.company,
+    address:inv.address||'', deliveryType:inv.dtype||'delivery',
+    deliveryDays:inv.days||[2,3,4,5,6],
+    deliveryWindow:inv.window||'7:00–9:00 AM',
+    canMessage:true, label:inv.company
   };
-  USERS.push(newUser);
+  if(!USERS.find(u=>u.id===newUser.id)) USERS.push(newUser);
+
   closeModal('account-creation-modal');
   window.history.replaceState({}, '', window.location.pathname);
-  currentUser = newUser;
+  currentUser=newUser;
   launchUser(newUser);
-  showToast('Account created! Welcome, '+data.company+' ✓');
+  showToast('Compte créé ! Bienvenue, '+inv.company+' ✓');
 }
 
-document.addEventListener("DOMContentLoaded", function(){
+document.addEventListener("DOMContentLoaded", async function(){
   checkResetToken();
   // Check invite token in URL
   try{
@@ -3007,9 +3185,20 @@ document.addEventListener("DOMContentLoaded", function(){
       }catch(e){
         try{const data=JSON.parse(atob(token));if(data.email) showAccountCreation(data);}catch(e2){}
       }
+      return; // Don't auto-login when showing invite screen
     }
   }catch(e){}
-  // Restore persistent session
+
+  // Restore Supabase session (client accounts)
+  try{
+    const {data:{session}}=await supa.auth.getSession();
+    if(session){
+      const profile=await loadProfile(session.user.id, session.user.email);
+      if(profile){currentUser=profile;launchUser(profile);return;}
+    }
+  }catch(e){}
+
+  // Fallback: localStorage session for hardcoded staff
   try{
     const saved=localStorage.getItem("carousel_session");
     if(saved){
@@ -3017,7 +3206,7 @@ document.addEventListener("DOMContentLoaded", function(){
       const age=(Date.now()-ts)/(1000*60*60*24);
       if(age<30){
         const user=USERS.find(u=>u.id===id);
-        if(user){currentUser=user;launchUser(user);}
+        if(user){currentUser=user;launchUser(user);return;}
         else localStorage.removeItem("carousel_session");
       } else {
         localStorage.removeItem("carousel_session");
