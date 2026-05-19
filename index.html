@@ -1171,8 +1171,25 @@ async function doLogin(){
   // Try Supabase Auth first (client accounts)
   const {data,error}=await supa.auth.signInWithPassword({email,password:pass});
   if(!error&&data.user){
-    const profile=await loadProfile(data.user.id,email);
-    if(profile){currentUser=profile;launchUser(profile);return;}
+    let profile=await loadProfile(data.user.id,email);
+    if(!profile){
+      // profiles table missing or insert failed — build minimal profile so login still works
+      profile={
+        id:data.user.id,supaId:data.user.id,
+        name:email.split('@')[0],role:'client',
+        email,company:email.split('@')[0],
+        address:'',deliveryType:'delivery',
+        deliveryDays:[2,3,4,5,6],
+        deliveryWindow:'7:00–9:00 AM',
+        canMessage:true,label:email.split('@')[0]
+      };
+      if(!USERS.find(u=>u.id===profile.id)) USERS.push(profile);
+    }
+    currentUser=profile;launchUser(profile);return;
+  }
+  if(error?.message?.toLowerCase().includes('email not confirmed')){
+    errEl.textContent='Veuillez confirmer votre adresse email avant de vous connecter.';
+    errEl.style.display='block';return;
   }
 
   // Fallback: hardcoded staff users (kitchen, drivers, sales, CEO)
