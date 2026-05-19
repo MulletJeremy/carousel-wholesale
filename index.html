@@ -571,6 +571,62 @@ input.qty-val::-webkit-inner-spin-button,input.qty-val::-webkit-outer-spin-butto
   <div class="mob-pad"></div>
 </div>
 
+<!-- EDIT CLIENT MODAL -->
+<div class="modal-wrap" id="edit-client-modal">
+  <div class="modal-card" style="width:480px;max-width:100%">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:800;color:var(--brown);margin:0">Modifier le client</h2>
+      <button onclick="closeModal('edit-client-modal')" style="background:none;border:none;font-size:22px;color:var(--brown-lt);cursor:pointer">×</button>
+    </div>
+    <div class="form-field"><label class="form-label">Entreprise</label><input class="form-input" id="ec-company" type="text"></div>
+    <div class="form-field"><label class="form-label">Contact</label><input class="form-input" id="ec-name" type="text"></div>
+    <div class="form-field"><label class="form-label">Email</label><input class="form-input" id="ec-email" type="email" style="opacity:.6" readonly></div>
+    <div class="form-field"><label class="form-label">Adresse de livraison</label><input class="form-input" id="ec-address" type="text"></div>
+    <div class="form-field"><label class="form-label">Type</label>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button id="ec-dtype-delivery" class="dtype-btn active" onclick="setECDType('delivery',this)">Livraison</button>
+        <button id="ec-dtype-pickup" class="dtype-btn" onclick="setECDType('pickup',this)">Pickup</button>
+      </div>
+    </div>
+    <div class="form-field"><label class="form-label">Fenêtre horaire</label><input class="form-input" id="ec-window" type="text" placeholder="7:00–9:00 AM"></div>
+    <div class="form-field"><label class="form-label">Jours de livraison</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px" id="ec-days"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="saveClient()">Enregistrer</button>
+      <button class="btn btn-ghost" onclick="closeModal('edit-client-modal')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT EMPLOYEE MODAL -->
+<div class="modal-wrap" id="edit-employee-modal">
+  <div class="modal-card" style="width:440px;max-width:100%">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:800;color:var(--brown);margin:0">Modifier l'employé</h2>
+      <button onclick="closeModal('edit-employee-modal')" style="background:none;border:none;font-size:22px;color:var(--brown-lt);cursor:pointer">×</button>
+    </div>
+    <div class="form-field"><label class="form-label">Nom</label><input class="form-input" id="ee-name" type="text"></div>
+    <div class="form-field"><label class="form-label">Email</label><input class="form-input" id="ee-email" type="email" style="opacity:.6" readonly></div>
+    <div class="form-field"><label class="form-label">Rôle</label>
+      <select class="form-input" id="ee-role">
+        <option value="kitchen">Kitchen (BOF)</option>
+        <option value="driver">Driver</option>
+        <option value="sales">Sales Rep</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <input type="checkbox" id="ee-can-message" style="accent-color:var(--gold);width:16px;height:16px">
+      <label for="ee-can-message" style="font-size:13px;color:var(--brown-mid);cursor:pointer">Accès messagerie clients</label>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="saveEmployee()">Enregistrer</button>
+      <button class="btn btn-ghost" onclick="closeModal('edit-employee-modal')">Annuler</button>
+    </div>
+  </div>
+</div>
+
 <!-- EDIT ORDER MODAL -->
 <div class="modal-wrap" id="edit-order-modal">
   <div class="modal-card" style="width:520px;max-width:100%">
@@ -807,6 +863,25 @@ async function dbUpdateOrderStatus(id, status){
     const {error} = await supa.from('orders').update({status}).eq('id',id);
     if(error) throw error;
   }catch(e){ console.warn('DB update status failed:',e); }
+}
+
+async function dbLoadEZCaterOrders(){
+  try{
+    const {data,error}=await supa.from('ezcater_orders').select('*').order('received_at',{ascending:false});
+    if(error){console.warn('EZCater load failed:',error);return;}
+    if(data&&data.length>0){
+      EZCATER_ORDERS=data.map(r=>({
+        id:r.id, event:r.event_name||'EZCater Order',
+        deliveryDate:r.delivery_date||'',
+        deliveryAddress:r.delivery_address||'',
+        items:Array.isArray(r.items)?r.items:[],
+        subtotal:parseFloat(r.subtotal)||0,
+        status:r.status||'en attente',
+        notes:r.notes||'',
+        imported:r.imported||false
+      }));
+    }
+  }catch(e){console.warn('dbLoadEZCaterOrders failed:',e);}
 }
 
 async function dbLoadMessages(){
@@ -1058,7 +1133,7 @@ const salesCart={};
 const DEFAULT_ROLE_PERMISSIONS = {
   ceo:     {dashboard:true, production:true, orders:true, upcoming:true, ezcater:true, route:true, clients:true, team:true, messages:true, integrations:true, canConfirm:true, canInvoice:true, canEdit:true, canManageRoles:true},
   admin:   {dashboard:true, production:true, orders:true, upcoming:true, ezcater:true, route:true, clients:true, team:true, messages:true, integrations:true, canConfirm:true, canInvoice:true, canEdit:true, canManageRoles:false},
-  kitchen: {dashboard:true, production:true, orders:true, upcoming:false, ezcater:false, route:false, clients:false, team:false, messages:true, integrations:false, canConfirm:true, canInvoice:false, canEdit:false, canManageRoles:false},
+  kitchen: {dashboard:true, production:true, orders:true, upcoming:false, ezcater:false, route:false, clients:false, team:false, messages:true, integrations:false, canConfirm:true, canInvoice:false, canEdit:true, canManageRoles:false},
   driver:  {dashboard:false, production:false, orders:false, upcoming:false, ezcater:false, route:true, clients:false, team:false, messages:false, integrations:false, canConfirm:false, canInvoice:false, canEdit:false, canManageRoles:false},
   sales:   {dashboard:true, production:false, orders:true, upcoming:true, ezcater:false, route:false, clients:true, team:false, messages:true, integrations:false, canConfirm:true, canInvoice:false, canEdit:true, canManageRoles:false},
 };
@@ -1109,7 +1184,10 @@ async function doLogin(){
   launchUser(user);
 }
 async function launchUser(user){
-  await Promise.all([dbLoadOrders(), dbLoadMessages()]);
+  const perms=getUserPerms(user.id);
+  const loads=[dbLoadOrders(), dbLoadMessages()];
+  if(perms.ezcater) loads.push(dbLoadEZCaterOrders());
+  await Promise.all(loads);
   if(user.role!=="client"&&user.role!=="driver") await loadProfiles();
   if(user.role==="client"){
     showClient();
@@ -1119,7 +1197,10 @@ async function launchUser(user){
     if(getUserPerms(user.id).messages) renderAdminInbox();
   }
 }
-document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.getElementById("view-login").classList.contains("active"))doLogin();});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&document.getElementById("view-login").classList.contains("active"))doLogin();
+  if(e.key==="Escape"){closePO();document.querySelectorAll(".modal-wrap.open").forEach(m=>m.classList.remove("open"));}
+});
 async function doLogout(){
   currentUser=null;cart={};selDelivDate=null;
   try{localStorage.removeItem("carousel_session");}catch(e){}
@@ -2199,14 +2280,36 @@ function renderEZCaterPanel(){
         </div>
         <div style="display:flex;gap:7px;flex-wrap:wrap">
           ${!o.imported?`<button class="btn btn-primary btn-sm" onclick="importEZOrder('${o.id}')">↓ Add to Production</button>`:`<span class="badge badge-sage">✓ In production queue</span>`}
-          ${o.status==="en attente"?`<button class="btn btn-green btn-sm" onclick="acceptEZOrder('${o.id}')">✓ Accept</button><button class="btn btn-sm" style="background:var(--red-pale);color:var(--red);border:none" onclick="showToast('Order ${o.id} rejected')">✕ Reject</button>`:""}
+          ${o.status==="en attente"?`<button class="btn btn-green btn-sm" onclick="acceptEZOrder('${o.id}')">✓ Accepter</button><button class="btn btn-sm" style="background:var(--red-pale);color:var(--red);border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600" onclick="rejectEZOrder('${o.id}')">✕ Rejeter</button>`:""}
           <button class="btn btn-ghost btn-sm" onclick="showToast('Printing EZCater order…')">🖨 Print</button>
         </div>
         <div style="font-size:11px;color:var(--brown-lt);margin-top:8px">ID: ${o.id}</div>
       </div>`).join("")}`;
 }
-function importEZOrder(id){const o=EZCATER_ORDERS.find(x=>x.id===id);if(o){o.imported=true;renderEZCaterPanel();showToast("EZCater "+id+" added to production ✓");}}
-function acceptEZOrder(id){const o=EZCATER_ORDERS.find(x=>x.id===id);if(o){o.status="confirmée";renderEZCaterPanel();showToast("EZCater "+id+" accepted ✓");}}
+async function importEZOrder(id){
+  const o=EZCATER_ORDERS.find(x=>x.id===id);
+  if(!o) return;
+  o.imported=true;
+  renderEZCaterPanel();
+  showToast("EZCater "+id+" ajouté à la production ✓");
+  await fetch('/api/ezcater-action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId:id,action:'import'})}).catch(()=>{});
+}
+async function acceptEZOrder(id){
+  const o=EZCATER_ORDERS.find(x=>x.id===id);
+  if(!o) return;
+  o.status="confirmée";
+  renderEZCaterPanel();
+  showToast("EZCater "+id+" acceptée ✓");
+  await fetch('/api/ezcater-action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId:id,action:'accept'})}).catch(()=>{});
+}
+async function rejectEZOrder(id){
+  const o=EZCATER_ORDERS.find(x=>x.id===id);
+  if(!o) return;
+  o.status="rejetée";
+  renderEZCaterPanel();
+  showToast("EZCater "+id+" rejetée");
+  await fetch('/api/ezcater-action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderId:id,action:'reject'})}).catch(()=>{});
+}
 function renderRoutePanel(){
   const now=new Date(),monday=new Date(now);
   monday.setDate(now.getDate()-now.getDay()+1+(currentWeekOffset*7));
@@ -2317,10 +2420,103 @@ function renderTeamPanel(){
             <span style="position:absolute;top:2px;left:${u.canMessage?"18":"2"}px;width:16px;height:16px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
           </label>
         </div>
-        ${u.id!=="admin"?`<button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;color:var(--red);border-color:var(--red-pale)" onclick="removeTeamMember('${u.id}')">Remove</button>`:""}
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" onclick="editEmployee('${u.id}')">✏️ Edit</button>
+          ${u.id!=="admin"?`<button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center;color:var(--red);border-color:var(--red-pale)" onclick="removeTeamMember('${u.id}')">Supprimer</button>`:""}
+        </div>
       </div>`).join("")}
     </div>`;
 }
+// ════════ EDIT CLIENT ════════
+let editingClientId = null;
+let ecDelivType = 'delivery';
+let ecDays = [];
+const ALL_DAYS = [{n:'Lun',d:1},{n:'Mar',d:2},{n:'Mer',d:3},{n:'Jeu',d:4},{n:'Ven',d:5},{n:'Sam',d:6},{n:'Dim',d:0}];
+
+function editClient(id){
+  const c = USERS.find(u=>u.id===id);
+  if(!c) return;
+  editingClientId = id;
+  ecDelivType = c.deliveryType||'delivery';
+  ecDays = [...(c.deliveryDays||[])];
+  document.getElementById('ec-company').value = c.company||'';
+  document.getElementById('ec-name').value = c.name||'';
+  document.getElementById('ec-email').value = c.email||'';
+  document.getElementById('ec-address').value = c.address||'';
+  document.getElementById('ec-window').value = c.deliveryWindow||'';
+  document.getElementById('ec-dtype-delivery').classList.toggle('active', ecDelivType==='delivery');
+  document.getElementById('ec-dtype-pickup').classList.toggle('active', ecDelivType==='pickup');
+  renderECDays();
+  document.getElementById('edit-client-modal').classList.add('open');
+}
+
+function setECDType(t){
+  ecDelivType = t;
+  document.getElementById('ec-dtype-delivery').classList.toggle('active', t==='delivery');
+  document.getElementById('ec-dtype-pickup').classList.toggle('active', t==='pickup');
+}
+
+function renderECDays(){
+  document.getElementById('ec-days').innerHTML = ALL_DAYS.map(({n,d})=>`
+    <button onclick="toggleECDay(${d},this)" class="rday-btn ${ecDays.includes(d)?'active':''}">${n}</button>
+  `).join('');
+}
+
+function toggleECDay(d, btn){
+  const idx = ecDays.indexOf(d);
+  if(idx>=0) ecDays.splice(idx,1); else ecDays.push(d);
+  btn.classList.toggle('active', ecDays.includes(d));
+}
+
+async function saveClient(){
+  const c = USERS.find(u=>u.id===editingClientId);
+  if(!c) return;
+  c.company = document.getElementById('ec-company').value.trim();
+  c.name = document.getElementById('ec-name').value.trim();
+  c.address = document.getElementById('ec-address').value.trim();
+  c.deliveryType = ecDelivType;
+  c.deliveryWindow = document.getElementById('ec-window').value.trim();
+  c.deliveryDays = [...ecDays];
+  c.label = c.company;
+  // Persist to Supabase profiles if it's a Supabase user
+  if(c.supaId){
+    await supa.from('profiles').update({
+      company:c.company, name:c.name, address:c.address,
+      delivery_type:c.deliveryType, delivery_window:c.deliveryWindow,
+      delivery_days:c.deliveryDays, label:c.label
+    }).eq('id', c.supaId);
+  }
+  closeModal('edit-client-modal');
+  renderClientsPanel();
+  showToast('Profil de '+c.company+' mis à jour ✓');
+}
+
+// ════════ EDIT EMPLOYEE ════════
+let editingEmployeeId = null;
+
+function editEmployee(id){
+  const u = USERS.find(x=>x.id===id);
+  if(!u) return;
+  editingEmployeeId = id;
+  document.getElementById('ee-name').value = u.name||'';
+  document.getElementById('ee-email').value = u.email||'';
+  document.getElementById('ee-role').value = u.role||'kitchen';
+  document.getElementById('ee-can-message').checked = u.canMessage||false;
+  document.getElementById('edit-employee-modal').classList.add('open');
+}
+
+function saveEmployee(){
+  const u = USERS.find(x=>x.id===editingEmployeeId);
+  if(!u) return;
+  u.name = document.getElementById('ee-name').value.trim();
+  u.role = document.getElementById('ee-role').value;
+  u.canMessage = document.getElementById('ee-can-message').checked;
+  u.label = u.name;
+  closeModal('edit-employee-modal');
+  renderTeamPanel();
+  showToast('Profil de '+u.name+' mis à jour ✓');
+}
+
 function toggleCanMessage(userId, val){
   const user=USERS.find(u=>u.id===userId);
   if(user){
