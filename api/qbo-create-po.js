@@ -64,8 +64,30 @@ module.exports = async (req, res) => {
     { headers }
   );
   const itemData = await itemRes.json();
-  const itemId = itemData.QueryResponse?.Item?.[0]?.Id;
-  if (!itemId) return res.status(500).json({ error: 'Item "Wholesale Products" not found in QBO' });
+  let itemId = itemData.QueryResponse?.Item?.[0]?.Id;
+
+  if (!itemId) {
+    // Find an income account to attach the new item to
+    const acctRes = await fetch(
+      `${baseUrl}/query?query=${encodeURIComponent("SELECT * FROM Account WHERE AccountType = 'Income' MAXRESULTS 1")}&minorversion=65`,
+      { headers }
+    );
+    const acctData = await acctRes.json();
+    const incomeAccount = acctData.QueryResponse?.Account?.[0];
+    if (!incomeAccount) return res.status(500).json({ error: 'No income account found in QBO — cannot create Wholesale Products item' });
+
+    const createItemRes = await fetch(`${baseUrl}/item?minorversion=65`, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        Name: 'Wholesale Products',
+        Type: 'Service',
+        IncomeAccountRef: { value: incomeAccount.Id, name: incomeAccount.Name }
+      })
+    });
+    const createItemData = await createItemRes.json();
+    itemId = createItemData.Item?.Id;
+    if (!itemId) return res.status(500).json({ error: 'Could not create Wholesale Products item in QBO', detail: createItemData });
+  }
 
   // Find or create customer
   const safeName = order.clientName.replace(/'/g, "''");
