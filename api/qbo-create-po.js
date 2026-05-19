@@ -97,7 +97,9 @@ module.exports = async (req, res) => {
   );
   const queryData = await queryRes.json();
   let customerId = queryData.QueryResponse?.Customer?.[0]?.Id;
-  let customerEmail = queryData.QueryResponse?.Customer?.[0]?.PrimaryEmailAddr?.Address || order.clientEmail || '';
+  const existingQBOEmail = queryData.QueryResponse?.Customer?.[0]?.PrimaryEmailAddr?.Address || '';
+  // Prefer the email from our system over whatever QBO has
+  let customerEmail = order.clientEmail || existingQBOEmail;
 
   if (!customerId) {
     const createRes = await fetch(`${baseUrl}/customer?minorversion=65`, {
@@ -105,12 +107,22 @@ module.exports = async (req, res) => {
       body: JSON.stringify({
         DisplayName: order.clientName,
         BillAddr: { Line1: order.clientAddress || '' },
-        PrimaryEmailAddr: { Address: order.clientEmail || '' }
+        ...(customerEmail ? { PrimaryEmailAddr: { Address: customerEmail } } : {})
       })
     });
     const createData = await createRes.json();
     customerId = createData.Customer?.Id;
-    customerEmail = order.clientEmail || '';
+  } else if (customerEmail && !existingQBOEmail) {
+    // Customer exists in QBO but has no email — patch it
+    const existing = queryData.QueryResponse.Customer[0];
+    await fetch(`${baseUrl}/customer?minorversion=65`, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        ...existing,
+        PrimaryEmailAddr: { Address: customerEmail },
+        sparse: true
+      })
+    });
   }
 
   if (!customerId) return res.status(500).json({ error: 'Could not create customer in QBO' });
