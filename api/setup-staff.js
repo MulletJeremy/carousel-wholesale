@@ -5,9 +5,10 @@
  * Delete or disable this file after running once.
  */
 module.exports = async (req, res) => {
-  if (req.method !== 'POST') return res.status(405).end();
-
-  const { secret } = req.body;
+  // Accept GET (secret in query) or POST (secret in body) for ease of use
+  const secret = req.method === 'GET'
+    ? req.query.secret
+    : req.body?.secret;
   if (!secret || secret !== process.env.SETUP_SECRET) {
     return res.status(401).json({ error: 'Invalid secret' });
   }
