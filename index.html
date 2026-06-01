@@ -1208,16 +1208,21 @@ async function doLogin(){
   if(!error&&data.user){
     let profile=await loadProfile(data.user.id,email);
     if(!profile){
-      // profiles table missing or insert failed — build minimal profile so login still works
-      profile={
-        id:data.user.id,supaId:data.user.id,
-        name:email.split('@')[0],role:'client',
-        email,company:email.split('@')[0],
-        address:'',deliveryType:'delivery',
-        deliveryDays:[2,3,4,5,6],
-        deliveryWindow:'7:00–9:00 AM',
-        canMessage:true,label:email.split('@')[0]
-      };
+      // profiles table missing — check hardcoded USERS first (staff/CEO)
+      const known=USERS.find(u=>u.email?.toLowerCase()===email);
+      if(known){
+        profile={...known, id:data.user.id, supaId:data.user.id};
+      } else {
+        profile={
+          id:data.user.id, supaId:data.user.id,
+          name:email.split('@')[0], role:'client',
+          email, company:email.split('@')[0],
+          address:'', deliveryType:'delivery',
+          deliveryDays:[2,3,4,5,6],
+          deliveryWindow:'7:00–9:00 AM',
+          canMessage:true, label:email.split('@')[0]
+        };
+      }
       if(!USERS.find(u=>u.id===profile.id)) USERS.push(profile);
     }
     currentUser=profile;launchUser(profile);return;
