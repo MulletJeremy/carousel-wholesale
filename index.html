@@ -648,6 +648,38 @@ input.qty-val::-webkit-inner-spin-button,input.qty-val::-webkit-outer-spin-butto
   </div>
 </div>
 
+<!-- INVITE EMPLOYEE MODAL -->
+<div class="modal-wrap" id="invite-employee-modal">
+  <div class="modal-card" style="width:420px;max-width:100%">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:800;color:var(--brown);margin:0">Inviter un employé</h2>
+      <button onclick="closeModal('invite-employee-modal')" style="background:none;border:none;font-size:22px;color:var(--brown-lt);cursor:pointer">×</button>
+    </div>
+    <div style="background:var(--gold-pale);border:1px solid var(--gold-lt);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--brown-mid);margin-bottom:16px">
+      📧 L'employé recevra un lien pour créer son mot de passe et accéder à l'app.
+    </div>
+    <div class="form-field"><label class="form-label">Prénom / Nom</label><input class="form-input" id="ie-name" type="text" placeholder="Marie Dupont"></div>
+    <div class="form-field"><label class="form-label">Email</label><input class="form-input" id="ie-email" type="email" placeholder="marie@carousel.com"></div>
+    <div class="form-field"><label class="form-label">Rôle</label>
+      <select class="form-input" id="ie-role">
+        <option value="kitchen">🥐 Kitchen (BOF)</option>
+        <option value="driver">🚚 Driver</option>
+        <option value="sales">💼 Sales Rep</option>
+        <option value="admin">⚙️ Admin</option>
+      </select>
+    </div>
+    <div id="ie-link-result" style="display:none;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:600;color:var(--brown-mid);margin-bottom:4px">Lien d'invitation :</div>
+      <div style="background:var(--sage-pale);border:1px solid #C8DBC9;border-radius:8px;padding:10px 12px;font-size:11px;color:var(--brown-mid);word-break:break-all;cursor:pointer" id="ie-link-text" onclick="copyToClipboard(this.textContent);showToast('Lien copié ✓')">—</div>
+    </div>
+    <div id="ie-error" style="display:none;background:var(--red-pale);color:var(--red);padding:8px 12px;border-radius:7px;font-size:12px;margin-bottom:12px"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="sendStaffInvite(this)">Envoyer l'invitation</button>
+      <button class="btn btn-ghost" onclick="closeModal('invite-employee-modal')">Annuler</button>
+    </div>
+  </div>
+</div>
+
 <!-- INVITE MODAL -->
 <div class="modal-wrap" id="invite-modal">
   <div class="modal-card">
@@ -2416,32 +2448,7 @@ function renderClientsPanel(){
 }
 function renderTeamPanel(){
   document.getElementById("team-content").innerHTML=`
-    <div class="sec-header"><h2 class="sec-title">Team Accounts</h2><button class="btn btn-primary btn-sm" onclick="showAddTeamMember()">+ Add member</button></div>
-    <div id="add-team-form" style="display:none;margin-bottom:18px">
-      <div class="card" style="padding:16px;max-width:440px">
-        <h3 style="font-size:15px;font-weight:700;color:var(--brown);margin-bottom:14px">New Team Member</h3>
-        <div class="form-field"><label class="form-label">Nom</label><input class="form-input" id="tm-name" type="text" placeholder="Marie"></div>
-        <div class="form-field"><label class="form-label">Email</label><input class="form-input" id="tm-email" type="email" placeholder="marie@carousel.com"></div>
-        <div class="form-field"><label class="form-label">Password</label><input class="form-input" id="tm-pass" type="text" placeholder="Password temporaire"></div>
-        <div class="form-field"><label class="form-label">Role</label>
-          <select class="form-input" id="tm-role">
-            <option value="kitchen">Kitchen (BOF)</option>
-            <option value="driver">Driver</option>
-            <option value="sales">Sales Rep</option>
-            <option value="admin">Admin</option>
-            ${currentUser?.role==='ceo'?'<option value="ceo">CEO</option>':''}
-          </select>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-          <input type="checkbox" id="tm-can-message" style="accent-color:var(--gold);width:16px;height:16px">
-          <label for="tm-can-message" style="font-size:13px;color:var(--brown-mid);cursor:pointer">Accès messagerie clients</label>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:4px">
-          <button class="btn btn-primary btn-sm" onclick="addTeamMember()">Create Account</button>
-          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('add-team-form').style.display='none'">Cancel</button>
-        </div>
-      </div>
-    </div>
+    <div class="sec-header"><h2 class="sec-title">Team Accounts</h2><button class="btn btn-primary btn-sm" onclick="document.getElementById('invite-employee-modal').classList.add('open')">+ Inviter un employé</button></div>
     <div style="background:var(--gold-pale);border:1px solid var(--gold-lt);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--brown-mid);margin-bottom:16px">
       💬 Active le toggle <strong>Messages</strong> pour donner accès à la messagerie client à un membre de l'équipe.
     </div>
@@ -2657,27 +2664,60 @@ function resetUserPerms(userId){
   showToast('Permissions réinitialisées pour '+user?.name);
 }
 
-function showAddTeamMember(){
-  const form=document.getElementById("add-team-form");
-  if(form) form.style.display=form.style.display==="none"?"block":"none";
+function showAddTeamMember(){ /* replaced by invite-employee-modal */ }
+function addTeamMember(){ /* replaced by sendStaffInvite */ }
+
+async function sendStaffInvite(btn){
+  const name  = document.getElementById('ie-name').value.trim();
+  const email = document.getElementById('ie-email').value.trim().toLowerCase();
+  const role  = document.getElementById('ie-role').value;
+  const errEl = document.getElementById('ie-error');
+  errEl.style.display='none';
+  if(!name||!email){errEl.textContent='Nom et email requis.';errEl.style.display='block';return;}
+
+  const orig=btn.textContent;
+  btn.textContent='Envoi…';btn.disabled=true;
+
+  const tokenData = JSON.stringify({type:'staff', name, email, role, issued:Date.now()});
+  const token = btoa(unescape(encodeURIComponent(tokenData)));
+  const link  = `${window.location.origin}${window.location.pathname}?invite=${token}`;
+
+  document.getElementById('ie-link-result').style.display='block';
+  document.getElementById('ie-link-text').textContent=link;
+
+  const roleLabels={kitchen:'Cuisine (BOF)',driver:'Driver',sales:'Sales Rep',admin:'Admin'};
+  try{
+    await sendEmail(email,
+      `Invitation — Le Carousel Patisserie`,
+      `<div style="font-family:-apple-system,sans-serif;max-width:520px;margin:0 auto;background:#FAF7F2;padding:32px">
+        <div style="text-align:center;margin-bottom:24px">
+          <h1 style="font-size:22px;color:#3D2B1F;margin:0">Le Carousel Patisserie</h1>
+          <p style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#A07860;margin:4px 0 0">Équipe interne</p>
+        </div>
+        <div style="background:#fff;border-radius:12px;padding:24px;border:1px solid rgba(61,43,31,0.12)">
+          <h2 style="font-size:18px;color:#3D2B1F;margin:0 0 12px">Bienvenue, ${name} 👋</h2>
+          <p style="font-size:14px;color:#6B4C3B;line-height:1.7;margin-bottom:20px">
+            Tu as été invité(e) à rejoindre le portail interne de Le Carousel Patisserie en tant que <strong>${roleLabels[role]||role}</strong>.
+          </p>
+          <div style="text-align:center;margin-bottom:20px">
+            <a href="${link}" style="background:#3D2B1F;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:700;display:inline-block">Créer mon compte →</a>
+          </div>
+          <p style="font-size:12px;color:#A07860;text-align:center">Ce lien est personnel — ne pas partager.</p>
+        </div>
+      </div>`
+    );
+    showToast('Invitation envoyée à '+email+' ✓');
+  }catch(e){
+    showToast('Lien généré — email non envoyé. Copie le lien manuellement.');
+  }
+
+  setTimeout(()=>{
+    btn.textContent=orig;btn.disabled=false;
+    document.getElementById('ie-name').value='';
+    document.getElementById('ie-email').value='';
+  },2000);
 }
-function addTeamMember(){
-  const name=document.getElementById("tm-name").value.trim();
-  const email=document.getElementById("tm-email").value.trim().toLowerCase();
-  const pass=document.getElementById("tm-pass").value.trim();
-  const role=document.getElementById("tm-role").value;
-  const canMessage=document.getElementById("tm-can-message")?.checked||false;
-  if(!name||!email||!pass){showToast("Fill in all fields.");return;}
-  if(USERS.find(u=>u.email===email)){showToast("Email already exists.");return;}
-  const id="team-"+Date.now();
-  USERS.push({id,name,role,email,pass,label:name,canMessage});
-  showToast("Account created for "+name+" ✓");
-  document.getElementById("tm-name").value="";
-  document.getElementById("tm-email").value="";
-  document.getElementById("tm-pass").value="";
-  document.getElementById("add-team-form").style.display="none";
-  renderTeamPanel();
-}
+
 function removeTeamMember(id){
   const idx=USERS.findIndex(u=>u.id===id);
   if(idx>=0){const name=USERS[idx].name;USERS.splice(idx,1);renderTeamPanel();showToast(name+" removed from team");}
@@ -3390,12 +3430,16 @@ function showAccountCreation(data){
   pendingInviteData = data;
   const modal = document.getElementById('account-creation-modal');
   if(!modal){ console.warn('account-creation-modal not found'); return; }
-  document.getElementById('ac-title').textContent = 'Welcome, '+(data.name||data.company)+'!';
-  document.getElementById('ac-subtitle').textContent = "You've been invited to the Le Carousel Patisserie wholesale portal.";
+  const isStaff = data.type === 'staff';
+  const roleLabels = {kitchen:'Cuisine (BOF)',driver:'Driver',sales:'Sales Rep',admin:'Admin',ceo:'CEO'};
+  document.getElementById('ac-title').textContent = 'Bienvenue, '+data.name+'!';
+  document.getElementById('ac-subtitle').textContent = isStaff
+    ? 'Tu as été invité(e) à rejoindre l\'équipe Le Carousel Patisserie.'
+    : "You've been invited to the Le Carousel Patisserie wholesale portal.";
   document.getElementById('ac-email').value = data.email;
-  document.getElementById('ac-info').innerHTML = 
-    '<strong>'+data.company+'</strong><br>'+
-    (data.dtype==='delivery'?'🚚 Delivery':'🏪 Pickup')+' · ⏰ '+(data.window||'TBD');
+  document.getElementById('ac-info').innerHTML = isStaff
+    ? `<strong>${data.name}</strong><br>Rôle : <span class="badge badge-brown">${roleLabels[data.role]||data.role}</span>`
+    : '<strong>'+data.company+'</strong><br>'+(data.dtype==='delivery'?'🚚 Delivery':'🏪 Pickup')+' · ⏰ '+(data.window||'TBD');
   document.getElementById('ac-error').style.display='none';
   document.getElementById('ac-pass').value='';
   document.getElementById('ac-pass2').value='';
@@ -3423,8 +3467,14 @@ async function createAccount(){
     return;
   }
 
+  const isStaff = inv.type === 'staff';
+
   // Save profile to Supabase
-  await supa.from('profiles').upsert({
+  await supa.from('profiles').upsert(isStaff ? {
+    id:authData.user.id, email:inv.email,
+    role:inv.role||'kitchen', name:inv.name,
+    label:inv.name, can_message:true
+  } : {
     id:authData.user.id, email:inv.email,
     role:'client', name:inv.name||inv.company,
     company:inv.company, address:inv.address||'',
@@ -3434,7 +3484,11 @@ async function createAccount(){
     can_message:true, label:inv.company
   });
 
-  const newUser={
+  const newUser = isStaff ? {
+    id:authData.user.id, supaId:authData.user.id,
+    name:inv.name, role:inv.role||'kitchen',
+    email:inv.email, label:inv.name, canMessage:true
+  } : {
     id:authData.user.id, supaId:authData.user.id,
     name:inv.name||inv.company, role:'client',
     email:inv.email, company:inv.company,
@@ -3449,7 +3503,7 @@ async function createAccount(){
   window.history.replaceState({}, '', window.location.pathname);
   currentUser=newUser;
   launchUser(newUser);
-  showToast('Compte créé ! Bienvenue, '+inv.company+' ✓');
+  showToast('Compte créé ! Bienvenue, '+inv.name+' ✓');
 }
 
 document.addEventListener("DOMContentLoaded", async function(){
