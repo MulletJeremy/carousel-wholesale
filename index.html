@@ -310,7 +310,7 @@ input.qty-val::-webkit-inner-spin-button,input.qty-val::-webkit-outer-spin-butto
     <div class="form-field"><label class="form-label">Email</label><input class="form-input" id="login-email" type="email" placeholder="your@email.com"></div>
     <div class="form-field"><label class="form-label">Password</label><input class="form-input" id="login-password" type="password" placeholder="••••••••"></div>
     <label class="stay-signed-in"><input type="checkbox" id="stay-signed-in" checked> Stay signed in</label>
-    <button class="btn btn-primary" style="width:100%;margin-top:10px;justify-content:center" onclick="doLogin()">Sign In</button>
+    <button class="btn btn-primary" style="width:100%;margin-top:10px;justify-content:center" id="login-btn" onclick="doLogin()">Sign In</button>
     <p style="text-align:center;margin-top:10px"><button onclick="showForgotPassword()" style="background:none;border:none;color:var(--gold);font-size:12px;cursor:pointer;text-decoration:underline">Forgot password?</button></p>
     <p style="font-size:11px;color:var(--brown-lt);text-align:center;margin-top:8px">Net 15 · $45 MOQ · $6 delivery · <a href="mailto:wholesale@carousel-patisserie.com" style="color:var(--gold)">Contact us</a></p>
   </div>
@@ -1166,7 +1166,10 @@ async function doLogin(){
   const email=document.getElementById("login-email").value.trim().toLowerCase();
   const pass=document.getElementById("login-password").value;
   const errEl=document.getElementById("login-error");
+  const btn=document.getElementById("login-btn");
   errEl.style.display="none";
+  if(btn){btn.textContent="Connexion…";btn.disabled=true;}
+  const resetBtn=()=>{if(btn){btn.textContent="Sign In";btn.disabled=false;}};
 
   // Try Supabase Auth first (client accounts)
   const {data,error}=await supa.auth.signInWithPassword({email,password:pass});
@@ -1189,12 +1192,12 @@ async function doLogin(){
   }
   if(error?.message?.toLowerCase().includes('email not confirmed')){
     errEl.textContent='Veuillez confirmer votre adresse email avant de vous connecter.';
-    errEl.style.display='block';return;
+    errEl.style.display='block';resetBtn();return;
   }
 
   // Fallback: hardcoded staff users (kitchen, drivers, sales, CEO)
   const user=USERS.find(u=>u.email.toLowerCase()===email&&u.pass===pass);
-  if(!user){errEl.style.display="block";return;}
+  if(!user){errEl.style.display="block";resetBtn();return;}
   currentUser=user;
   const stayIn=document.getElementById("stay-signed-in")?.checked;
   if(stayIn) try{localStorage.setItem("carousel_session",JSON.stringify({id:user.id,ts:Date.now()}));}catch(e){}
@@ -1364,7 +1367,7 @@ function submitOrder(){
   if(subtotal<45){showToast("Minimum order is $45.");return;}
   if(orderType==="standing"&&recurringDays.length===0){showToast("Select recurring days for standing order.");return;}
   const fee=dType==="delivery"?6:0;
-  const id="PO-2026-"+String(Date.now()).slice(-3);
+  const id="PO-"+new Date().toISOString().slice(0,10).replace(/-/g,"")+"-"+Math.random().toString(36).slice(2,5).toUpperCase();
   const order={id,clientId:currentUser.id,clientName:currentUser.company,clientAddress:currentUser.address||"",
     deliveryDate:selDelivDate,deliveryType:dType,deliveryWindow:currentUser.deliveryWindow||"",
     items:lines,subtotal,deliveryFee:fee,total:subtotal+fee,
@@ -1848,7 +1851,7 @@ function submitSalesOrder(){
   const lines=Object.entries(salesCart).map(([sku,qty])=>{const item=allItems.find(i=>i.sku==sku);return item?{sku:parseInt(sku),name:item.name,qty,price:item.price}:null;}).filter(Boolean);
   if(!lines.length){showToast("Add at least one item.");return;}
   const subtotal=lines.reduce((s,l)=>s+l.price*l.qty,0),fee=client.deliveryType==="delivery"?6:0;
-  const id="PO-2026-S"+String(Date.now()).slice(-3);
+  const id="PO-"+new Date().toISOString().slice(0,10).replace(/-/g,"")+"-"+Math.random().toString(36).slice(2,5).toUpperCase();
   const salesOrder={id,clientId,clientName:client.company,clientAddress:client.address||"",deliveryDate:delivDate,deliveryType:client.deliveryType,deliveryWindow:client.deliveryWindow||"",items:lines,subtotal,deliveryFee:fee,total:subtotal+fee,status:"confirmée",type,recurringDays:[],placedAt:new Date().toISOString(),notes:document.getElementById("sales-order-notes").value};
   ORDERS.push(salesOrder);dbSaveOrder(salesOrder);emailOrderConfirmation(salesOrder);
   Object.keys(salesCart).forEach(k=>delete salesCart[k]);
@@ -1940,7 +1943,7 @@ function renderDashboard(){
   const wo=getWeekOrders(0),rev=wo.reduce((s,o)=>s+o.total,0),pcs=wo.reduce((s,o)=>s+o.items.reduce((ss,i)=>ss+i.qty,0),0);
   const ezPending=EZCATER_ORDERS.filter(o=>!o.imported).length;
   document.getElementById("dash-content").innerHTML=`
-    <div class="sec-header"><h2 class="sec-title">Good morning ☕</h2><span class="badge badge-gold">${fmtDate(new Date())}</span></div>
+    <div class="sec-header"><h2 class="sec-title">Good morning ☕</h2><div style="display:flex;gap:8px;align-items:center"><span class="badge badge-gold">${fmtDate(new Date())}</span>${canDo('canConfirm')?`<button class="btn btn-ghost btn-sm" onclick="triggerGenerateRecurring(this)">🔄 Générer récurrentes</button>`:''}</div></div>
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-val">${wo.length}</div><div class="stat-label">Commandes cette semaine</div><div class="stat-sub">${wo.filter(o=>o.status==="en attente").length} en attente</div></div>
       <div class="stat-card"><div class="stat-val">$${rev.toFixed(0)}</div><div class="stat-label">Revenue</div></div>
@@ -1964,6 +1967,23 @@ function renderDashboard(){
   document.getElementById("dash-alerts").innerHTML=alerts.length?alerts.map(a=>`<div class="alert-card ${a.type}" style="margin-bottom:6px"><span style="font-size:16px">${a.icon}</span><div><div style="font-size:13px;font-weight:600">${a.title}</div><div style="font-size:12px;color:var(--brown-lt);margin-top:2px">${a.sub}</div></div></div>`).join(""):`<div class="alert-card"><span style="font-size:16px">✓</span><div><div style="font-size:13px;font-weight:600">All clear</div></div></div>`;
   document.getElementById("dash-recent").innerHTML=wo.slice(0,5).map(o=>`<div class="alert-card" style="margin-bottom:6px"><div style="flex:1"><div style="font-weight:700;font-size:13px">${o.clientName}</div><div style="font-size:12px;color:var(--brown-lt)">${fmtDate(new Date(o.deliveryDate+"T12:00:00"))} · $${o.total.toFixed(2)}</div></div><span class="status-chip status-${o.status}">${o.status}</span></div>`).join("")||"<p style='color:var(--brown-lt);font-size:13px;font-style:italic'>No orders this week.</p>";
 }
+async function triggerGenerateRecurring(btn){
+  const orig=btn.textContent;
+  btn.textContent='Génération…';btn.disabled=true;
+  try{
+    const res=await fetch('/api/generate-recurring',{method:'POST',headers:{'Content-Type':'application/json'}});
+    const data=await res.json();
+    if(data.generated?.length){
+      await dbLoadOrders();
+      renderDashboard();renderOrdersPanel&&renderOrdersPanel();
+      showToast(`✓ ${data.generated.length} commande(s) récurrente(s) générée(s)`);
+    } else {
+      showToast('Aucune nouvelle commande à générer');
+    }
+  }catch(e){showToast('Erreur lors de la génération');}
+  btn.textContent=orig;btn.disabled=false;
+}
+
 function renderProductionSheet(){
   // If kitchen role, show kitchen-style view with bulk actions
   if(currentUser?.role === 'kitchen'){
@@ -3288,33 +3308,78 @@ function showCutoffBanner(){
 
 function checkResetToken(){
   try{
+    // Supabase puts recovery token in URL hash: #access_token=...&type=recovery
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    if(hash.get('type')==='recovery'){
+      window.history.replaceState({},'',' ');
+      showResetPasswordModal();
+      return;
+    }
+    // Legacy custom token fallback
     const token = new URLSearchParams(window.location.search).get('reset');
     if(!token) return;
-    const data = JSON.parse(decodeURIComponent(escape(atob(token))));
-    if(Date.now() > data.exp){showToast('Reset link expired.');return;}
-    const modal = document.createElement('div');
-    modal.style.cssText='position:fixed;inset:0;background:rgba(26,22,18,.55);display:flex;align-items:center;justify-content:center;z-index:300;padding:16px';
-    modal.innerHTML=`<div style="background:var(--warm);border-radius:var(--radius-lg);padding:28px;width:360px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25)">
-      <h2 style="font-size:18px;font-weight:700;color:var(--brown);margin-bottom:6px">Set New Password</h2>
-      <p style="font-size:13px;color:var(--brown-lt);margin-bottom:16px">For: <strong>${data.email}</strong></p>
-      <div id="reset-error" style="background:var(--red-pale);color:var(--red);padding:8px 12px;border-radius:7px;font-size:12px;margin-bottom:12px;display:none"></div>
-      <div class="form-field"><label class="form-label">New Password</label><input class="form-input" id="reset-new-pass" type="password" placeholder="New password"></div>
-      <div class="form-field"><label class="form-label">Confirm Password</label><input class="form-input" id="reset-confirm-pass" type="password" placeholder="Confirm new password"></div>
-      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="applyPasswordReset('${data.email}',this.parentElement)">Update Password</button>
-    </div>`;
-    document.body.appendChild(modal);
+    try{
+      const data = JSON.parse(decodeURIComponent(escape(atob(token))));
+      if(Date.now() > data.exp){showToast('Reset link expired.');return;}
+      showResetPasswordModal(data.email);
+    }catch(e){}
   }catch(e){ console.warn('Reset token error:',e); }
 }
 
-function applyPasswordReset(email, container){
+function showResetPasswordModal(emailHint){
+  const modal = document.createElement('div');
+  modal.id='reset-modal-overlay';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(26,22,18,.55);display:flex;align-items:center;justify-content:center;z-index:300;padding:16px';
+  modal.innerHTML=`<div style="background:var(--warm);border-radius:var(--radius-lg);padding:28px;width:360px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+    <h2 style="font-size:18px;font-weight:700;color:var(--brown);margin-bottom:6px">Nouveau mot de passe</h2>
+    ${emailHint?`<p style="font-size:13px;color:var(--brown-lt);margin-bottom:16px">Pour : <strong>${emailHint}</strong></p>`:''}
+    <div id="reset-error" style="background:var(--red-pale);color:var(--red);padding:8px 12px;border-radius:7px;font-size:12px;margin-bottom:12px;display:none"></div>
+    <div class="form-field"><label class="form-label">Nouveau mot de passe</label><input class="form-input" id="reset-new-pass" type="password" placeholder="8 caractères minimum"></div>
+    <div class="form-field"><label class="form-label">Confirmer</label><input class="form-input" id="reset-confirm-pass" type="password" placeholder="Confirmer le mot de passe"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" onclick="applyPasswordReset(this)">Mettre à jour</button>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+async function applyPasswordReset(btn){
   const newPass = document.getElementById('reset-new-pass').value;
   const confirmPass = document.getElementById('reset-confirm-pass').value;
   const errEl = document.getElementById('reset-error');
   errEl.style.display='none';
-  if(newPass.length < 6){errEl.textContent='Password must be at least 6 characters.';errEl.style.display='block';return;}
-  if(newPass !== confirmPass){errEl.textContent='Passwords do not match.';errEl.style.display='block';return;}
-  const user = USERS.find(u=>u.email.toLowerCase()===email.toLowerCase());
-  if(user){ user.pass = newPass; container.remove(); showToast('Password updated! Please sign in.'); window.history.replaceState({}, '', window.location.pathname); }
+  if(newPass.length < 8){errEl.textContent='Minimum 8 caractères.';errEl.style.display='block';return;}
+  if(newPass !== confirmPass){errEl.textContent='Les mots de passe ne correspondent pas.';errEl.style.display='block';return;}
+  btn.textContent='Mise à jour…';btn.disabled=true;
+  const {error} = await supa.auth.updateUser({password: newPass});
+  if(error){
+    errEl.textContent=error.message;errEl.style.display='block';
+    btn.textContent='Mettre à jour';btn.disabled=false;
+  } else {
+    document.getElementById('reset-modal-overlay')?.remove();
+    showToast('Mot de passe mis à jour ✓ Veuillez vous connecter.');
+  }
+}
+
+function showForgotPassword(){document.getElementById('forgot-modal').classList.add('open');}
+
+async function sendPasswordReset(){
+  const email = document.getElementById('forgot-email').value.trim().toLowerCase();
+  const errEl = document.getElementById('forgot-error');
+  const okEl  = document.getElementById('forgot-success');
+  errEl.style.display='none'; okEl.style.display='none';
+  if(!email){errEl.textContent='Entrez votre adresse email.';errEl.style.display='block';return;}
+  const btn = document.querySelector('#forgot-modal .btn-primary');
+  if(btn){btn.textContent='Envoi…';btn.disabled=true;}
+  const {error} = await supa.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin});
+  if(btn){btn.textContent='Send Reset Link';btn.disabled=false;}
+  if(error && !error.message.includes('not found')){
+    errEl.textContent=error.message;errEl.style.display='block';
+  } else {
+    // Always show success (don't reveal if email exists)
+    okEl.textContent='Si cet email est dans notre système, un lien de réinitialisation a été envoyé.';
+    okEl.style.display='block';
+    document.getElementById('forgot-email').value='';
+    setTimeout(()=>closeModal('forgot-modal'),3000);
+  }
 }
 
 
