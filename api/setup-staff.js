@@ -28,7 +28,7 @@ module.exports = async (req, res) => {
 
   for (const member of staff) {
     try {
-      // Create auth user via admin API
+      // Try to create auth user
       const authRes = await fetch(`${SUPA_URL}/auth/v1/admin/users`, {
         method: 'POST',
         headers: {
@@ -39,10 +39,20 @@ module.exports = async (req, res) => {
         body: JSON.stringify({
           email: member.email,
           password: member.password,
-          email_confirm: true // auto-confirm
+          email_confirm: true
         })
       });
-      const authData = await authRes.json();
+      let authData = await authRes.json();
+
+      // If user already exists, fetch their ID from the users list
+      if (!authData.id && authData.error_code === 'email_exists') {
+        const listRes = await fetch(`${SUPA_URL}/auth/v1/admin/users?per_page=1000`, {
+          headers: { 'apikey': SUPA_SERVICE, 'Authorization': `Bearer ${SUPA_SERVICE}` }
+        });
+        const list = await listRes.json();
+        const existing = (list.users || []).find(u => u.email === member.email);
+        if (existing) authData = existing;
+      }
 
       if (!authData.id) {
         results.push({ email: member.email, status: 'error', detail: authData });
